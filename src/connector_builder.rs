@@ -1,19 +1,23 @@
-use crate::connector::{ApiConnector, PaginationRule, TokenType};
+use crate::{
+    connector::TokenType,
+    pagination::{Pagination, PaginationRule, RequestPagination},
+    prelude::ApiConnector,
+};
 
 #[derive(Debug, Clone)]
-pub struct ApiConnectorBuilder {
+pub struct ApiConnectorBuilder<T: Pagination = RequestPagination> {
     pub(crate) token_type: TokenType,
     pub(crate) token: String,
     pub(crate) endpoint: String,
-    pub(crate) pagination: PaginationRule,
+    pub(crate) pagination: T,
 }
-impl ApiConnectorBuilder {
-    pub fn new(endpoint: impl ToString) -> Self {
+impl<T: Pagination + Clone> ApiConnectorBuilder<T> {
+    pub fn new(endpoint: impl ToString, pagination: T) -> Self {
         Self {
             token_type: TokenType::None,
             token: String::new(),
             endpoint: endpoint.to_string(),
-            pagination: PaginationRule::None,
+            pagination,
         }
     }
 
@@ -33,11 +37,11 @@ impl ApiConnectorBuilder {
     }
 
     pub fn pagination(mut self, pagination: PaginationRule) -> Self {
-        self.pagination = pagination;
+        self.pagination = self.pagination.pagination(pagination);
         self
     }
 
-    pub fn build(self) -> ApiConnector {
+    pub fn build(self) -> ApiConnector<T> {
         ApiConnector {
             token_type: self.token_type,
             token: self.token,

@@ -1,8 +1,10 @@
 pub mod connector;
 pub mod connector_builder;
 pub mod error;
+pub mod pagination;
 pub mod prelude;
 pub mod query;
 pub mod request;
+pub mod request_builder;
 pub mod request_url;
 pub mod test;

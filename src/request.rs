@@ -2,30 +2,35 @@ use reqwest::{header::HeaderMap, Client, Method, StatusCode, Url};
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
 
-use crate::{connector::PaginationRule, error::ApiError, request_url::RequestUrl};
+use crate::{
+    error::ApiError,
+    pagination::{Pagination, PaginationRule, RequestPagination},
+    request_url::RequestUrl,
+};
 
 #[derive(Debug, Clone)]
-pub struct Request<P: Serialize + Clone> {
+pub struct Request<P: Serialize + Clone = (), U: Pagination + Clone = RequestPagination> {
     pub(crate) method: Method,
     pub(crate) request_url: RequestUrl,
     pub(crate) headers: Option<HeaderMap>,
     pub(crate) payload: Option<P>,
-    pub(crate) pagination: PaginationRule,
+    pub(crate) pagination: U,
 }
 
-impl<P: Serialize + Clone> Request<P> {
+impl<P: Serialize + Clone, U: Pagination + Clone> Request<P, U> {
     pub fn new(
         method: Method,
-        url: RequestUrl,
+        request_url: RequestUrl,
         headers: Option<HeaderMap>,
         payload: Option<P>,
+        pagination: U,
     ) -> Self {
         Self {
             method,
-            request_url: url,
+            request_url,
             headers,
             payload,
-            pagination: PaginationRule::None,
+            pagination,
         }
     }
 
@@ -34,18 +39,18 @@ impl<P: Serialize + Clone> Request<P> {
         T: DeserializeOwned + Serialize,
         P: DeserializeOwned + Serialize,
     {
-        let req = self.request::<P>(self.payload.clone())?;
-        println!("Sending request: '{}'", req.url());
-        let response = Self::execute(&req).await?;
+        let request = self.request::<P>(self.payload.clone())?;
+        println!("Sending request: '{}'", request.url());
+        let response = Self::execute(&request).await?;
         let status = response.status().as_u16();
         let number_of_elements = Self::get_number_of_elements(response.headers());
         let mut page_count = Self::get_page_count(response.headers());
-        page_count = match self.pagination {
+        page_count = match self.pagination.get_pagination() {
             PaginationRule::None => 1,
-            PaginationRule::Fixed(limit) => std::cmp::min(page_count, limit),
+            PaginationRule::Fixed(limit) => std::cmp::min(page_count, limit.to_owned()),
             PaginationRule::OneShot => page_count,
         };
-        let parsed_response = self.parse_response_array(req, page_count).await;
+        let parsed_response = self.parse_response_array(request, page_count).await;
         println!(
             "Received response: code {}, {} elements, expected type: {} -> successfully parsed: {}",
             status,
@@ -231,7 +236,7 @@ impl<P: Serialize + Clone> Request<P> {
     }
 
     pub fn pagination(mut self, pagination: PaginationRule) -> Self {
-        self.pagination = pagination;
+        self.pagination = self.pagination.pagination(pagination);
         self
     }
 }

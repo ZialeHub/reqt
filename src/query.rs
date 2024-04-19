@@ -7,6 +7,7 @@ use crate::error::ApiError;
 
 #[derive(Clone, Default)]
 pub struct Query(Vec<String>);
+
 impl Query {
     pub fn build() -> Self {
         Self::default()
@@ -17,7 +18,13 @@ impl Query {
             .push(format!("{}={}", key.to_string(), value.to_string()));
         self
     }
+
+    pub fn join(mut self, query: Query) -> Self {
+        self.0.extend(query.0);
+        self
+    }
 }
+
 impl Display for Query {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if !self.0.is_empty() {
@@ -26,11 +33,13 @@ impl Display for Query {
         Ok(())
     }
 }
+
 impl Debug for Query {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "?{}", self.0.join("&"))
     }
 }
+
 impl FromStr for Query {
     type Err = ApiError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {

@@ -5,17 +5,19 @@ mod tests {
     use reqwest::{Client, StatusCode};
     use serde::{Deserialize, Serialize};
 
-    use crate::prelude::*;
+    use crate::{pagination::RequestPagination, prelude::*};
 
-    // TODO TO start tests you must provide your own UID and SECRET
-    const UID: &'static str = "your uid";
-    const SECRET: &'static str = "your secret";
+    fn get_credentials() -> TestApiConnector {
+        let connector: TestApiConnector = toml::from_str(include_str!("../.env")).unwrap();
+        connector
+    }
 
     #[derive(Debug, Clone, Deserialize)]
     struct TokenResponse {
         pub access_token: String,
     }
 
+    #[derive(Debug, Clone, Deserialize)]
     struct TestApiConnector {
         uid: String,
         secret: String,
@@ -23,8 +25,9 @@ mod tests {
         scopes: Vec<String>,
     }
     impl Authentification for TestApiConnector {
-        async fn connect(&self, url: &str) -> Result<ApiConnector, ApiError> {
-            let connector = ApiConnectorBuilder::new(url).token_type(TokenType::Bearer);
+        async fn connect(&self, url: &str) -> Result<ApiConnector<RequestPagination>, ApiError> {
+            let pagination = RequestPagination::default();
+            let connector = ApiConnectorBuilder::new(url, pagination).token_type(TokenType::Bearer);
             let client = Client::new();
 
             let scopes = self
@@ -79,12 +82,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_method_default() -> Result<(), ApiError> {
-        let data_connector = TestApiConnector {
-            uid: UID.to_string(),
-            secret: SECRET.to_string(),
-            auth_endpoint: "https://api.intra.42.fr/oauth/token".to_string(),
-            scopes: vec!["public".to_string()],
-        };
+        let data_connector = get_credentials();
         let connector = data_connector
             .connect("https://api.intra.42.fr/v2/")
             .await?;
@@ -99,12 +97,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_method_with_pagination_limit_from_connector() -> Result<(), ApiError> {
-        let data_connector = TestApiConnector {
-            uid: UID.to_string(),
-            secret: SECRET.to_string(),
-            auth_endpoint: "https://api.intra.42.fr/oauth/token".to_string(),
-            scopes: vec!["public".to_string()],
-        };
+        let data_connector = get_credentials();
         let connector = data_connector
             .connect("https://api.intra.42.fr/v2/")
             .await?
@@ -122,12 +115,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_method_with_pagination_one_shot_from_connector() -> Result<(), ApiError> {
-        let data_connector = TestApiConnector {
-            uid: UID.to_string(),
-            secret: SECRET.to_string(),
-            auth_endpoint: "https://api.intra.42.fr/oauth/token".to_string(),
-            scopes: vec!["public".to_string()],
-        };
+        let data_connector = get_credentials();
         let connector = data_connector
             .connect("https://api.intra.42.fr/v2/")
             .await?
@@ -139,18 +127,13 @@ mod tests {
         let response = request.send::<Vec<User>>().await?;
         eprintln!("{:?}", response);
         eprintln!("\n\nLEN = {:?}\n\n", response.len());
-        assert_eq!(response.len(), 721);
+        assert_eq!(response.len(), 761);
         Ok(())
     }
 
     #[tokio::test]
     async fn test_get_method_without_pagination_from_request() -> Result<(), ApiError> {
-        let data_connector = TestApiConnector {
-            uid: UID.to_string(),
-            secret: SECRET.to_string(),
-            auth_endpoint: "https://api.intra.42.fr/oauth/token".to_string(),
-            scopes: vec!["public".to_string()],
-        };
+        let data_connector = get_credentials();
         let connector = data_connector
             .connect("https://api.intra.42.fr/v2/")
             .await?
@@ -169,12 +152,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_method_with_pagination_limit_from_request() -> Result<(), ApiError> {
-        let data_connector = TestApiConnector {
-            uid: UID.to_string(),
-            secret: SECRET.to_string(),
-            auth_endpoint: "https://api.intra.42.fr/oauth/token".to_string(),
-            scopes: vec!["public".to_string()],
-        };
+        let data_connector = get_credentials();
         let connector = data_connector
             .connect("https://api.intra.42.fr/v2/")
             .await?;
@@ -192,12 +170,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_method_with_pagination_one_shot_from_request() -> Result<(), ApiError> {
-        let data_connector = TestApiConnector {
-            uid: UID.to_string(),
-            secret: SECRET.to_string(),
-            auth_endpoint: "https://api.intra.42.fr/oauth/token".to_string(),
-            scopes: vec!["public".to_string()],
-        };
+        let data_connector = get_credentials();
         let connector = data_connector
             .connect("https://api.intra.42.fr/v2/")
             .await?;
@@ -209,7 +182,7 @@ mod tests {
         let response = request.send::<Vec<User>>().await?;
         eprintln!("{:?}", response);
         eprintln!("\n\nLEN = {:?}\n\n", response.len());
-        assert_eq!(response.len(), 721);
+        assert_eq!(response.len(), 761);
         Ok(())
     }
 }
