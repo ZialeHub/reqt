@@ -38,8 +38,12 @@ impl Pagination for RequestPagination {
         &self.pagination
     }
 
-    fn get_current_page(&self) -> u32 {
+    fn current_page(&self) -> u32 {
         self.current_page
+    }
+
+    fn get_current_page(&self) -> Query {
+        Query::build().add("page[number]", self.current_page)
     }
 
     fn get_size(&self) -> Query {
@@ -60,7 +64,8 @@ pub trait Pagination {
     fn size(self, size: u32) -> Self;
     fn pagination(self, rule: PaginationRule) -> Self;
     fn get_pagination(&self) -> &PaginationRule;
-    fn get_current_page(&self) -> u32;
+    fn current_page(&self) -> u32;
+    fn get_current_page(&self) -> Query;
     fn get_size(&self) -> Query;
     fn next(&mut self);
     fn get_next(&mut self) -> Query;

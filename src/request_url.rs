@@ -36,10 +36,10 @@ impl RequestUrl {
         self
     }
 
-    pub fn as_url<U: Pagination + Clone>(&self, pagination: &mut U) -> Result<Url, ApiError> {
-        let mut query = self.query;
-        if pagination.get_current_page() > 0 {
-            query = query.join(pagination.get_next());
+    pub fn as_url<U: Pagination + Clone>(&self, pagination: &U) -> Result<Url, ApiError> {
+        let mut query = self.query.clone();
+        if pagination.current_page() > 0 {
+            query = query.join(pagination.get_current_page());
         }
         Url::parse(&format!("{}{}{}", self.endpoint, self.route, query))
             .map_err(|e| ApiError::WrongUrlFormat(e))

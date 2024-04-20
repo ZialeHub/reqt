@@ -36,6 +36,18 @@ pub enum ApiError {
     Connector(#[source] Box<ApiError>, ConnectorError),
 }
 
+impl From<reqwest::StatusCode> for ApiError {
+    fn from(status: reqwest::StatusCode) -> Self {
+        match status {
+            reqwest::StatusCode::NOT_FOUND => ApiError::NotFound,
+            reqwest::StatusCode::UNAUTHORIZED => ApiError::Unauthorized,
+            reqwest::StatusCode::TOO_MANY_REQUESTS => ApiError::TooManyRequests,
+            reqwest::StatusCode::INTERNAL_SERVER_ERROR => ApiError::InternalServerError,
+            _ => ApiError::BadRequest,
+        }
+    }
+}
+
 #[derive(thiserror::Error, Debug)]
 #[error("Connector")]
 pub struct ConnectorError;
