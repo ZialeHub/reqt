@@ -53,11 +53,13 @@ impl From<reqwest::StatusCode> for ApiError {
 pub struct ConnectorError;
 
 pub trait ErrorContext<T, E> {
-    fn err_ctx(self, context: E) -> Result<T, ApiError>;
+    fn err_ctx(self, context: E) -> Result<T>;
 }
 
-impl<T> ErrorContext<T, ConnectorError> for Result<T, ApiError> {
-    fn err_ctx(self, context: ConnectorError) -> Result<T, ApiError> {
+impl<T> ErrorContext<T, ConnectorError> for Result<T> {
+    fn err_ctx(self, context: ConnectorError) -> Result<T> {
         self.map_err(|e| ApiError::Connector(Box::new(e), context))
     }
 }
+
+pub type Result<T> = std::result::Result<T, ApiError>;

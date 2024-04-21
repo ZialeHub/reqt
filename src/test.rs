@@ -5,7 +5,7 @@ mod tests {
     use reqwest::{Client, StatusCode};
     use serde::{Deserialize, Serialize};
 
-    use crate::{pagination::RequestPagination, prelude::*};
+    use crate::prelude::*;
 
     fn get_credentials() -> TestApiConnector {
         let connector: TestApiConnector = toml::from_str(include_str!("../.env")).unwrap();
@@ -24,10 +24,11 @@ mod tests {
         auth_endpoint: String,
         scopes: Vec<String>,
     }
-    impl Authentification for TestApiConnector {
-        async fn connect(&self, url: &str) -> Result<ApiConnector<RequestPagination>, ApiError> {
+
+    impl Authentication for TestApiConnector {
+        async fn connect(&self, url: &str) -> Result<Api<RequestPagination>> {
             let pagination = RequestPagination::default();
-            let connector = ApiConnectorBuilder::new(url, pagination).token_type(TokenType::Bearer);
+            let connector = ApiConnectorBuilder::new(url, pagination);
             let client = Client::new();
 
             let scopes = self
@@ -48,24 +49,17 @@ mod tests {
             {
                 Ok(response) => {
                     match response.status() {
-                        StatusCode::NOT_FOUND => return Err(ApiError::NotFound),
-                        StatusCode::UNAUTHORIZED => return Err(ApiError::Unauthorized),
-                        StatusCode::TOO_MANY_REQUESTS => return Err(ApiError::TooManyRequests),
-                        StatusCode::INTERNAL_SERVER_ERROR => {
-                            return Err(ApiError::InternalServerError)
-                        }
                         StatusCode::OK
                         | StatusCode::CREATED
                         | StatusCode::ACCEPTED
                         | StatusCode::NO_CONTENT => {}
-                        _ => return Err(ApiError::BadRequest),
+                        status => return Err(status.into()),
                     }
                     match response.text().await {
                         Ok(response_text) => {
                             let token: TokenResponse =
                                 serde_json::from_str(&response_text).unwrap();
-                            eprintln!("token = {}", token.access_token);
-                            Ok(connector.token(&token.access_token).build())
+                            Ok(connector.bearer(token.access_token).build())
                         }
                         Err(e) => Err(ApiError::ResponseToText(e)),
                     }
@@ -81,107 +75,95 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_get_method_default() -> Result<(), ApiError> {
+    async fn get_method_default() -> Result<()> {
         let data_connector = get_credentials();
         let connector = data_connector
             .connect("https://api.intra.42.fr/v2/")
             .await?;
-        eprintln!("{:?}", connector);
-        let request = connector.get("users", Query::build())?;
-        eprintln!("{:?}", request);
+        let request = connector.get("users", Query::new())?;
         let response = request.send::<Vec<User>>().await?;
-        eprintln!("{:?}", response);
         assert_eq!(response.len(), 30);
         Ok(())
     }
 
     #[tokio::test]
-    async fn test_get_method_with_pagination_limit_from_connector() -> Result<(), ApiError> {
+    async fn connector_none_pagination() -> Result<()> {
+        let data_connector = get_credentials();
+        let connector = data_connector
+            .connect("https://api.intra.42.fr/v2/")
+            .await?
+            .pagination(PaginationRule::None);
+        let request = connector.get("users", Query::new().add("filter[primary_campus_id]", 31))?;
+        let response = request.send::<Vec<User>>().await?;
+        assert_eq!(response.len(), 30);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn connector_fixed_pagination() -> Result<()> {
         let data_connector = get_credentials();
         let connector = data_connector
             .connect("https://api.intra.42.fr/v2/")
             .await?
             .pagination(PaginationRule::Fixed(3));
-        eprintln!("{:?}", connector);
-        let request =
-            connector.get("users", Query::build().add("filter[primary_campus_id]", 31))?;
-        eprintln!("{:?}", request);
+        let request = connector.get("users", Query::new().add("filter[primary_campus_id]", 31))?;
         let response = request.send::<Vec<User>>().await?;
-        eprintln!("{:?}", response);
-        eprintln!("\n\nLEN = {:?}\n\n", response.len());
         assert_eq!(response.len(), 90);
         Ok(())
     }
 
     #[tokio::test]
-    async fn test_get_method_with_pagination_one_shot_from_connector() -> Result<(), ApiError> {
+    async fn connector_one_shot_pagination() -> Result<()> {
         let data_connector = get_credentials();
         let connector = data_connector
             .connect("https://api.intra.42.fr/v2/")
             .await?
             .pagination(PaginationRule::OneShot);
-        eprintln!("{:?}", connector);
-        let request =
-            connector.get("users", Query::build().add("filter[primary_campus_id]", 31))?;
-        eprintln!("{:?}", request);
+        let request = connector.get("users", Query::new().add("filter[primary_campus_id]", 31))?;
         let response = request.send::<Vec<User>>().await?;
-        eprintln!("{:?}", response);
-        eprintln!("\n\nLEN = {:?}\n\n", response.len());
         assert_eq!(response.len(), 761);
         Ok(())
     }
 
     #[tokio::test]
-    async fn test_get_method_without_pagination_from_request() -> Result<(), ApiError> {
+    async fn request_none_pagination_override() -> Result<()> {
         let data_connector = get_credentials();
         let connector = data_connector
             .connect("https://api.intra.42.fr/v2/")
             .await?
             .pagination(PaginationRule::OneShot);
-        eprintln!("{:?}", connector);
         let request = connector
-            .get("users", Query::build().add("filter[primary_campus_id]", 31))?
+            .get("users", Query::new().add("filter[primary_campus_id]", 31))?
             .pagination(PaginationRule::None);
-        eprintln!("{:?}", request);
         let response = request.send::<Vec<User>>().await?;
-        eprintln!("{:?}", response);
-        eprintln!("\n\nLEN = {:?}\n\n", response.len());
         assert_eq!(response.len(), 30);
         Ok(())
     }
 
     #[tokio::test]
-    async fn test_get_method_with_pagination_limit_from_request() -> Result<(), ApiError> {
+    async fn request_fixed_pagination_override() -> Result<()> {
         let data_connector = get_credentials();
         let connector = data_connector
             .connect("https://api.intra.42.fr/v2/")
             .await?;
-        eprintln!("{:?}", connector);
         let request = connector
-            .get("users", Query::build().add("filter[primary_campus_id]", 31))?
+            .get("users", Query::new().add("filter[primary_campus_id]", 31))?
             .pagination(PaginationRule::Fixed(3));
-        eprintln!("{:?}", request);
         let response = request.send::<Vec<User>>().await?;
-        eprintln!("{:?}", response);
-        eprintln!("\n\nLEN = {:?}\n\n", response.len());
         assert_eq!(response.len(), 90);
         Ok(())
     }
 
     #[tokio::test]
-    async fn test_get_method_with_pagination_one_shot_from_request() -> Result<(), ApiError> {
+    async fn request_one_shot_pagination_override() -> Result<()> {
         let data_connector = get_credentials();
         let connector = data_connector
             .connect("https://api.intra.42.fr/v2/")
             .await?;
-        eprintln!("{:?}", connector);
         let request = connector
-            .get("users", Query::build().add("filter[primary_campus_id]", 31))?
+            .get("users", Query::new().add("filter[primary_campus_id]", 31))?
             .pagination(PaginationRule::OneShot);
-        eprintln!("{:?}", request);
         let response = request.send::<Vec<User>>().await?;
-        eprintln!("{:?}", response);
-        eprintln!("\n\nLEN = {:?}\n\n", response.len());
         assert_eq!(response.len(), 761);
         Ok(())
     }

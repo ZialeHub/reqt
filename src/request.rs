@@ -3,7 +3,7 @@ use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
 
 use crate::{
-    error::ApiError,
+    error::{ApiError, Result},
     pagination::{Pagination, PaginationRule, RequestPagination},
     request_url::RequestUrl,
 };
@@ -34,7 +34,7 @@ impl<P: Serialize + Clone, U: Pagination + Clone> Request<P, U> {
         }
     }
 
-    pub async fn send<T>(&self) -> Result<T, ApiError>
+    pub async fn send<T>(&self) -> Result<T>
     where
         T: DeserializeOwned + Serialize,
         P: DeserializeOwned + Serialize,
@@ -45,7 +45,7 @@ impl<P: Serialize + Clone, U: Pagination + Clone> Request<P, U> {
         parsed_response
     }
 
-    fn build_reqwest<T>(&self, payload: Option<T>) -> Result<reqwest::Request, ApiError>
+    fn build_reqwest<T>(&self, payload: Option<T>) -> Result<reqwest::Request>
     where
         T: DeserializeOwned + Serialize,
     {
@@ -72,7 +72,7 @@ impl<P: Serialize + Clone, U: Pagination + Clone> Request<P, U> {
     fn build_next_reqwest(
         previous_request: &reqwest::Request,
         url: Url,
-    ) -> Result<reqwest::Request, ApiError> {
+    ) -> Result<reqwest::Request> {
         let request = reqwest::Request::new(previous_request.method().clone(), url);
         let client = Client::new();
         let mut request = reqwest::RequestBuilder::from_parts(client, request)
@@ -89,7 +89,7 @@ impl<P: Serialize + Clone, U: Pagination + Clone> Request<P, U> {
         }
     }
 
-    async fn execute_reqwest(request: &reqwest::Request) -> Result<reqwest::Response, ApiError> {
+    async fn execute_reqwest(request: &reqwest::Request) -> Result<reqwest::Response> {
         let client = Client::new();
         let response = client
             .execute(request.try_clone().ok_or(ApiError::ReqwestClone)?)
@@ -140,7 +140,7 @@ impl<P: Serialize + Clone, U: Pagination + Clone> Request<P, U> {
         }
     }
 
-    async fn parse_response<T>(response: reqwest::Response) -> Result<T, ApiError>
+    async fn parse_response<T>(response: reqwest::Response) -> Result<T>
     where
         T: DeserializeOwned + Serialize,
     {
@@ -155,7 +155,7 @@ impl<P: Serialize + Clone, U: Pagination + Clone> Request<P, U> {
         &self,
         request: reqwest::Request,
         first_response: reqwest::Response,
-    ) -> Result<T, ApiError>
+    ) -> Result<T>
     where
         T: DeserializeOwned + Serialize,
     {

@@ -9,7 +9,7 @@ use crate::error::ApiError;
 pub struct Query(Vec<String>);
 
 impl Query {
-    pub fn build() -> Self {
+    pub fn new() -> Self {
         Self::default()
     }
 
@@ -42,10 +42,12 @@ impl Debug for Query {
 
 impl FromStr for Query {
     type Err = ApiError;
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s.is_empty() {
-            return Ok(Query::build());
+            return Ok(Query::new());
         }
+
         let split_params: Vec<String> = s.split('&').map(|s| s.to_owned()).collect();
         Ok(Query(split_params))
     }

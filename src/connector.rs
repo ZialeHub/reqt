@@ -4,7 +4,7 @@ use reqwest::{header::HeaderMap, Method};
 use serde::Serialize;
 
 use crate::{
-    error::ApiError,
+    error::Result,
     pagination::{Pagination, PaginationRule, RequestPagination},
     query::Query,
     request::Request,
@@ -12,66 +12,84 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Default, PartialEq)]
-pub enum TokenType {
+pub enum Authorization {
     #[default]
     None,
     // `username:password` into request headers
     // username and password are Base64 encoded
     // `Authorization: Basic bG9sOnNlY3VyZQ==`
-    Basic,
+    Basic(String),
     // `token` into request headers
     // `Authorization: Bearer <token>`
-    Bearer,
+    Bearer(String),
     // `api_key` into request headers
     // `Authorization: Apikey 1234567890abcdef`
-    ApiKey,
+    ApiKey(String),
     // `access_token` into request headers
     // `Authorization: Bearer <access_token>`
     // `refresh_token` into request headers
     // `Authorization: Bearer <refresh_token>`
-    OAuth2,
+    OAuth2(String),
 }
-impl Display for TokenType {
+
+impl Authorization {
+    pub fn header_value(&self, headers: &mut HeaderMap) -> Result<()> {
+        match self {
+            Authorization::None => {}
+            _ => {
+                headers.insert(
+                    reqwest::header::AUTHORIZATION,
+                    reqwest::header::HeaderValue::from_str(&self.to_string())?,
+                );
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl Display for Authorization {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            TokenType::Basic => write!(f, "Basic"),
-            TokenType::ApiKey => write!(f, "ApiKey"),
-            TokenType::Bearer | TokenType::OAuth2 => write!(f, "Bearer"),
+            Authorization::Basic(token) => write!(f, "Basic {}", token),
+            Authorization::ApiKey(token) => write!(f, "ApiKey {}", token),
+            Authorization::Bearer(token) | Authorization::OAuth2(token) => {
+                write!(f, "Bearer {}", token)
+            }
             _ => panic!("TokenType::None is not allowed"),
         }
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct ApiConnector<T: Pagination + Clone = RequestPagination> {
-    pub(crate) token_type: TokenType,
-    pub(crate) token: String,
+pub struct Api<T: Pagination + Clone = RequestPagination> {
+    pub(crate) authorization: Authorization,
     pub(crate) endpoint: String,
     pub(crate) pagination: T,
 }
-impl ApiConnector {
+
+impl<T: Pagination + Clone> Api<T> {
     pub fn pagination(mut self, pagination: PaginationRule) -> Self {
         self.pagination = self.pagination.pagination(pagination);
         self
     }
+
+    pub fn token(&self) -> String {
+        self.authorization.to_string()
+    }
 }
 
-impl<T: Pagination + Clone> Connector<T> for ApiConnector<T> {
-    fn get(&self, route: impl ToString, query: Query) -> Result<Request<(), T>, ApiError> {
+impl<T: Pagination + Clone> Connector<T> for Api<T> {
+    fn get(&self, route: impl ToString, query: Query) -> Result<Request<(), T>> {
         let mut headers = HeaderMap::new();
-        if self.token_type != TokenType::None {
-            headers.insert(
-                reqwest::header::AUTHORIZATION,
-                reqwest::header::HeaderValue::from_str(&format!(
-                    "{} {}",
-                    self.token_type, self.token
-                ))?,
-            );
-        }
-        let url = RequestUrl::new(self.endpoint.clone())
+
+        self.authorization.header_value(&mut headers)?;
+
+        let url = RequestUrl::new(&self.endpoint)
             .route(route.to_string())
             .method(Method::GET)
             .query(query);
+
         let request = Request::<(), T>::new(
             url.method.clone(),
             url,
@@ -80,6 +98,7 @@ impl<T: Pagination + Clone> Connector<T> for ApiConnector<T> {
             self.pagination.clone(),
         )
         .pagination(self.pagination.get_pagination().clone());
+
         Ok(request)
     }
 
@@ -88,25 +107,21 @@ impl<T: Pagination + Clone> Connector<T> for ApiConnector<T> {
         route: impl ToString,
         query: Query,
         payload: Option<P>,
-    ) -> Result<Request<P, T>, ApiError> {
+    ) -> Result<Request<P, T>> {
         let mut headers = HeaderMap::new();
-        if self.token_type != TokenType::None {
-            headers.insert(
-                reqwest::header::AUTHORIZATION,
-                reqwest::header::HeaderValue::from_str(&format!(
-                    "{} {}",
-                    self.token_type, self.token
-                ))?,
-            );
-        }
+
+        self.authorization.header_value(&mut headers)?;
+
         headers.insert(
             reqwest::header::CONTENT_TYPE,
             reqwest::header::HeaderValue::from_str("application/json")?,
         );
-        let url = RequestUrl::new(self.endpoint.clone())
+
+        let url = RequestUrl::new(&self.endpoint)
             .route(route.to_string())
             .method(Method::POST)
             .query(query);
+
         let request = Request::<P, T>::new(
             url.method.clone(),
             url,
@@ -115,6 +130,7 @@ impl<T: Pagination + Clone> Connector<T> for ApiConnector<T> {
             self.pagination.clone(),
         )
         .pagination(self.pagination.get_pagination().clone());
+
         Ok(request)
     }
 
@@ -123,25 +139,21 @@ impl<T: Pagination + Clone> Connector<T> for ApiConnector<T> {
         route: impl ToString,
         query: Query,
         payload: Option<P>,
-    ) -> Result<Request<P, T>, ApiError> {
+    ) -> Result<Request<P, T>> {
         let mut headers = HeaderMap::new();
-        if self.token_type != TokenType::None {
-            headers.insert(
-                reqwest::header::AUTHORIZATION,
-                reqwest::header::HeaderValue::from_str(&format!(
-                    "{} {}",
-                    self.token_type, self.token
-                ))?,
-            );
-        }
+
+        self.authorization.header_value(&mut headers)?;
+
         headers.insert(
             reqwest::header::CONTENT_TYPE,
             reqwest::header::HeaderValue::from_str("application/json")?,
         );
-        let url = RequestUrl::new(self.endpoint.clone())
+
+        let url = RequestUrl::new(&self.endpoint)
             .route(route.to_string())
             .method(Method::PUT)
             .query(query);
+
         let request = Request::<P, T>::new(
             url.method.clone(),
             url,
@@ -150,6 +162,7 @@ impl<T: Pagination + Clone> Connector<T> for ApiConnector<T> {
             self.pagination.clone(),
         )
         .pagination(self.pagination.get_pagination().clone());
+
         Ok(request)
     }
 
@@ -158,25 +171,21 @@ impl<T: Pagination + Clone> Connector<T> for ApiConnector<T> {
         route: impl ToString,
         query: Query,
         payload: Option<P>,
-    ) -> Result<Request<P, T>, ApiError> {
+    ) -> Result<Request<P, T>> {
         let mut headers = HeaderMap::new();
-        if self.token_type != TokenType::None {
-            headers.insert(
-                reqwest::header::AUTHORIZATION,
-                reqwest::header::HeaderValue::from_str(&format!(
-                    "{} {}",
-                    self.token_type, self.token
-                ))?,
-            );
-        }
+
+        self.authorization.header_value(&mut headers)?;
+
         headers.insert(
             reqwest::header::CONTENT_TYPE,
             reqwest::header::HeaderValue::from_str("application/json")?,
         );
-        let url = RequestUrl::new(self.endpoint.clone())
+
+        let url = RequestUrl::new(&self.endpoint)
             .route(route.to_string())
             .method(Method::PATCH)
             .query(query);
+
         let request = Request::<P, T>::new(
             url.method.clone(),
             url,
@@ -185,24 +194,20 @@ impl<T: Pagination + Clone> Connector<T> for ApiConnector<T> {
             self.pagination.clone(),
         )
         .pagination(self.pagination.get_pagination().clone());
+
         Ok(request)
     }
 
-    fn delete(&self, route: impl ToString, query: Query) -> Result<Request<(), T>, ApiError> {
+    fn delete(&self, route: impl ToString, query: Query) -> Result<Request<(), T>> {
         let mut headers = HeaderMap::new();
-        if self.token_type != TokenType::None {
-            headers.insert(
-                reqwest::header::AUTHORIZATION,
-                reqwest::header::HeaderValue::from_str(&format!(
-                    "{} {}",
-                    self.token_type, self.token
-                ))?,
-            );
-        }
-        let url = RequestUrl::new(self.endpoint.clone())
+
+        self.authorization.header_value(&mut headers)?;
+
+        let url = RequestUrl::new(&self.endpoint)
             .route(route.to_string())
             .method(Method::DELETE)
             .query(query);
+
         let request = Request::<(), T>::new(
             url.method.clone(),
             url,
@@ -211,35 +216,36 @@ impl<T: Pagination + Clone> Connector<T> for ApiConnector<T> {
             self.pagination.clone(),
         )
         .pagination(self.pagination.get_pagination().clone());
+
         Ok(request)
     }
 }
 
 /// Trait to implement on your connector structure
 /// to allow the use of the `connect` method
-pub trait Authentification<T: Pagination + Clone = RequestPagination> {
-    fn connect(&self, url: &str) -> impl Future<Output = Result<ApiConnector<T>, ApiError>> + Send;
+pub trait Authentication<T: Pagination + Clone = RequestPagination> {
+    fn connect(&self, url: &str) -> impl Future<Output = Result<Api<T>>> + Send;
 }
 
 pub trait Connector<T: Pagination + Clone> {
-    fn get(&self, route: impl ToString, query: Query) -> Result<Request<(), T>, ApiError>;
+    fn get(&self, route: impl ToString, query: Query) -> Result<Request<(), T>>;
     fn post<P: Serialize + Clone>(
         &self,
         route: impl ToString,
         query: Query,
         payload: Option<P>,
-    ) -> Result<Request<P, T>, ApiError>;
+    ) -> Result<Request<P, T>>;
     fn put<P: Serialize + Clone>(
         &self,
         route: impl ToString,
         query: Query,
         payload: Option<P>,
-    ) -> Result<Request<P, T>, ApiError>;
+    ) -> Result<Request<P, T>>;
     fn patch<P: Serialize + Clone>(
         &self,
         route: impl ToString,
         query: Query,
         payload: Option<P>,
-    ) -> Result<Request<P, T>, ApiError>;
-    fn delete(&self, route: impl ToString, query: Query) -> Result<Request<(), T>, ApiError>;
+    ) -> Result<Request<P, T>>;
+    fn delete(&self, route: impl ToString, query: Query) -> Result<Request<(), T>>;
 }

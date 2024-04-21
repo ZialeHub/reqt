@@ -1,4 +1,4 @@
-use crate::prelude::Query;
+use crate::query::Query;
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub enum PaginationRule {
@@ -14,6 +14,7 @@ pub struct RequestPagination {
     pub(crate) current_page: u32,
     pub(crate) pagination: PaginationRule,
 }
+
 impl Default for RequestPagination {
     fn default() -> Self {
         Self {
@@ -23,6 +24,7 @@ impl Default for RequestPagination {
         }
     }
 }
+
 impl Pagination for RequestPagination {
     fn size(mut self, size: u32) -> Self {
         self.size = size;
@@ -43,11 +45,11 @@ impl Pagination for RequestPagination {
     }
 
     fn get_current_page(&self) -> Query {
-        Query::build().add("page[number]", self.current_page)
+        Query::new().add("page[number]", self.current_page)
     }
 
     fn get_size(&self) -> Query {
-        Query::build().add("page[size]", self.size)
+        Query::new().add("page[size]", self.size)
     }
 
     fn next(&mut self) {
@@ -56,7 +58,7 @@ impl Pagination for RequestPagination {
 
     fn get_next(&mut self) -> Query {
         self.current_page += 1;
-        Query::build().add("page[number]", self.current_page)
+        Query::new().add("page[number]", self.current_page)
     }
 }
 
