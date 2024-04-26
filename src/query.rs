@@ -5,6 +5,7 @@ use std::{
 
 use crate::error::ApiError;
 
+/// Query parameters for the request
 #[derive(Clone, Default)]
 pub struct Query(Vec<String>);
 
@@ -13,12 +14,14 @@ impl Query {
         Self::default()
     }
 
+    /// Add a key-value pair to the query
     pub fn add(mut self, key: impl ToString, value: impl ToString) -> Self {
         self.0
             .push(format!("{}={}", key.to_string(), value.to_string()));
         self
     }
 
+    /// Join two queries into one
     pub fn join(mut self, query: Query) -> Self {
         self.0.extend(query.0);
         self

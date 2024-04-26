@@ -11,6 +11,7 @@ use crate::{
     request_url::RequestUrl,
 };
 
+/// Authorization type to be used in the API
 #[derive(Debug, Clone, Default, PartialEq)]
 pub enum Authorization {
     #[default]
@@ -33,6 +34,10 @@ pub enum Authorization {
 }
 
 impl Authorization {
+    /// Set the Authorization header value for the request
+    ///
+    /// # Arguments
+    /// * `headers` - A mutable reference to the request headers
     pub fn header_value(&self, headers: &mut HeaderMap) -> Result<()> {
         match self {
             Authorization::None => {}
@@ -61,14 +66,23 @@ impl Display for Authorization {
     }
 }
 
+/// Structure to build requests to the API
+///
+/// # Parameters
+/// * `T` - Pagination type to be used in the request
+///
+/// # Attributes
+/// * authorization - Authorization type to be used in the request
+/// * endpoint - API endpoint to be used in the request
+/// * pagination - Pagination type to be used in the request
 #[derive(Debug, Clone)]
-pub struct Api<T: Pagination + Clone = RequestPagination> {
+pub struct Api<T: Pagination = RequestPagination> {
     pub(crate) authorization: Authorization,
     pub(crate) endpoint: String,
     pub(crate) pagination: T,
 }
 
-impl<T: Pagination + Clone> Api<T> {
+impl<T: Pagination> Api<T> {
     pub fn pagination(mut self, pagination: PaginationRule) -> Self {
         self.pagination = self.pagination.pagination(pagination);
         self
@@ -79,7 +93,7 @@ impl<T: Pagination + Clone> Api<T> {
     }
 }
 
-impl<T: Pagination + Clone> Connector<T> for Api<T> {
+impl<T: Pagination> Connector<T> for Api<T> {
     fn get(&self, route: impl ToString, query: Query) -> Result<Request<(), T>> {
         let mut headers = HeaderMap::new();
 
@@ -223,11 +237,13 @@ impl<T: Pagination + Clone> Connector<T> for Api<T> {
 
 /// Trait to implement on your connector structure
 /// to allow the use of the `connect` method
-pub trait Authentication<T: Pagination + Clone = RequestPagination> {
+pub trait Authentication<T: Pagination = RequestPagination> {
     fn connect(&self, url: &str) -> impl Future<Output = Result<Api<T>>> + Send;
 }
 
-pub trait Connector<T: Pagination + Clone> {
+/// Trait to implement on your connector structure
+/// to allow the use of the `get`, `post`, `put`, `patch`, and `delete` methods
+pub trait Connector<T: Pagination> {
     fn get(&self, route: impl ToString, query: Query) -> Result<Request<(), T>>;
     fn post<P: Serialize + Clone>(
         &self,

@@ -6,6 +6,13 @@ use crate::{
     query::Query,
 };
 
+/// Structure to create a request URL
+///
+/// # Attributes
+/// * endpoint - Endpoint to be used in the request
+/// * route - Route to be used in the request
+/// * query - Query to be used in the request
+/// * method - HTTP method to be used in the request
 #[derive(Debug, Clone)]
 pub struct RequestUrl {
     pub(crate) endpoint: String,
@@ -39,12 +46,12 @@ impl RequestUrl {
         self
     }
 
-    pub fn as_url<U: Pagination + Clone>(&self, pagination: &U) -> Result<Url> {
+    /// Convert the request URL to a URL
+    /// that can be used in a request (Contains the query with pagination)
+    pub fn as_url<U: Pagination>(&self, pagination: &U) -> Result<Url> {
         let mut query = self.query.clone();
 
-        if pagination.current_page() > 0 {
-            query = query.join(pagination.get_current_page());
-        }
+        query = query.join(pagination.get_current_page());
 
         Url::parse(&format!("{}{}{}", self.endpoint, self.route, query))
             .map_err(|e| ApiError::WrongUrlFormat(e))

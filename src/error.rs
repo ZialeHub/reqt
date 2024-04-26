@@ -12,6 +12,8 @@ pub enum ApiError {
     BadRequest,
     #[error("Internal Server Error")]
     InternalServerError,
+    #[error("Pagination Done")]
+    PaginationDone,
     #[error("Page Limit Exceeded")]
     PageLimitExceeded,
     #[error("JsonValue is not an Array")]

@@ -4,13 +4,13 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-pub struct ApiConnectorBuilder<T: Pagination = RequestPagination> {
+pub struct ApiBuilder<T: Pagination = RequestPagination> {
     pub(crate) authorization: Authorization,
     pub(crate) endpoint: String,
     pub(crate) pagination: T,
 }
 
-impl<T: Pagination + Clone> ApiConnectorBuilder<T> {
+impl<T: Pagination> ApiBuilder<T> {
     pub fn new(endpoint: impl ToString, pagination: T) -> Self {
         Self {
             authorization: Authorization::None,

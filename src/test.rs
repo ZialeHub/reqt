@@ -28,7 +28,7 @@ mod tests {
     impl Authentication for TestApiConnector {
         async fn connect(&self, url: &str) -> Result<Api<RequestPagination>> {
             let pagination = RequestPagination::default();
-            let connector = ApiConnectorBuilder::new(url, pagination);
+            let connector = ApiBuilder::new(url, pagination);
             let client = Client::new();
 
             let scopes = self
@@ -80,9 +80,9 @@ mod tests {
         let connector = data_connector
             .connect("https://api.intra.42.fr/v2/")
             .await?;
-        let request = connector.get("users", Query::new())?;
+        let mut request = connector.get("users", Query::new())?;
         let response = request.send::<Vec<User>>().await?;
-        assert_eq!(response.len(), 30);
+        assert_eq!(response.len(), connector.pagination.size);
         Ok(())
     }
 
@@ -92,10 +92,11 @@ mod tests {
         let connector = data_connector
             .connect("https://api.intra.42.fr/v2/")
             .await?
-            .pagination(PaginationRule::None);
-        let request = connector.get("users", Query::new().add("filter[primary_campus_id]", 31))?;
+            .pagination(PaginationRule::default());
+        let mut request =
+            connector.get("users", Query::new().add("filter[primary_campus_id]", 31))?;
         let response = request.send::<Vec<User>>().await?;
-        assert_eq!(response.len(), 30);
+        assert_eq!(response.len(), connector.pagination.size);
         Ok(())
     }
 
@@ -106,9 +107,10 @@ mod tests {
             .connect("https://api.intra.42.fr/v2/")
             .await?
             .pagination(PaginationRule::Fixed(3));
-        let request = connector.get("users", Query::new().add("filter[primary_campus_id]", 31))?;
+        let mut request =
+            connector.get("users", Query::new().add("filter[primary_campus_id]", 31))?;
         let response = request.send::<Vec<User>>().await?;
-        assert_eq!(response.len(), 90);
+        assert_eq!(response.len(), connector.pagination.size * 3);
         Ok(())
     }
 
@@ -119,7 +121,8 @@ mod tests {
             .connect("https://api.intra.42.fr/v2/")
             .await?
             .pagination(PaginationRule::OneShot);
-        let request = connector.get("users", Query::new().add("filter[primary_campus_id]", 31))?;
+        let mut request =
+            connector.get("users", Query::new().add("filter[primary_campus_id]", 31))?;
         let response = request.send::<Vec<User>>().await?;
         assert_eq!(response.len(), 761);
         Ok(())
@@ -132,11 +135,11 @@ mod tests {
             .connect("https://api.intra.42.fr/v2/")
             .await?
             .pagination(PaginationRule::OneShot);
-        let request = connector
+        let mut request = connector
             .get("users", Query::new().add("filter[primary_campus_id]", 31))?
-            .pagination(PaginationRule::None);
+            .pagination(PaginationRule::default());
         let response = request.send::<Vec<User>>().await?;
-        assert_eq!(response.len(), 30);
+        assert_eq!(response.len(), connector.pagination.size);
         Ok(())
     }
 
@@ -146,11 +149,11 @@ mod tests {
         let connector = data_connector
             .connect("https://api.intra.42.fr/v2/")
             .await?;
-        let request = connector
+        let mut request = connector
             .get("users", Query::new().add("filter[primary_campus_id]", 31))?
             .pagination(PaginationRule::Fixed(3));
         let response = request.send::<Vec<User>>().await?;
-        assert_eq!(response.len(), 90);
+        assert_eq!(response.len(), connector.pagination.size * 3);
         Ok(())
     }
 
@@ -160,11 +163,54 @@ mod tests {
         let connector = data_connector
             .connect("https://api.intra.42.fr/v2/")
             .await?;
-        let request = connector
+        let mut request = connector
             .get("users", Query::new().add("filter[primary_campus_id]", 31))?
             .pagination(PaginationRule::OneShot);
         let response = request.send::<Vec<User>>().await?;
         assert_eq!(response.len(), 761);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn request_consistency() -> Result<()> {
+        let data_connector = get_credentials();
+        let connector = data_connector
+            .connect("https://api.intra.42.fr/v2/")
+            .await?;
+        let mut request = connector
+            .get("users", Query::new().add("filter[primary_campus_id]", 31))?
+            .pagination(PaginationRule::Fixed(2));
+        let first_response = request.send::<Vec<User>>().await?;
+        assert_eq!(first_response.len(), connector.pagination.size * 2);
+        let second_response = request.send::<Vec<User>>().await?;
+        assert_eq!(second_response.len(), connector.pagination.size * 2);
+        assert_eq!(request.pagination.current_page(), 5);
+        assert!(first_response
+            .iter()
+            .zip(second_response.iter())
+            .all(|(a, b)| a.login != b.login));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn request_consistency_after_reset() -> Result<()> {
+        let data_connector = get_credentials();
+        let connector = data_connector
+            .connect("https://api.intra.42.fr/v2/")
+            .await?;
+        let mut request = connector
+            .get("users", Query::new().add("filter[primary_campus_id]", 31))?
+            .pagination(PaginationRule::Fixed(2));
+        let first_response = request.send::<Vec<User>>().await?;
+        assert_eq!(first_response.len(), connector.pagination.size * 2);
+        request.pagination.reset();
+        let second_response = request.send::<Vec<User>>().await?;
+        assert_eq!(second_response.len(), connector.pagination.size * 2);
+        assert_eq!(request.pagination.current_page(), 3);
+        assert!(first_response
+            .iter()
+            .zip(second_response.iter())
+            .all(|(a, b)| a.login == b.login));
         Ok(())
     }
 }

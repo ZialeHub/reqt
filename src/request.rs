@@ -8,8 +8,20 @@ use crate::{
     request_url::RequestUrl,
 };
 
+/// Structure to send requests to the API
+///
+/// # Parameters
+/// * `P` - Payload type to be used in the request
+/// * `U` - Pagination type to be used in the request
+///
+/// # Attributes
+/// * method - HTTP method to be used in the request
+/// * request_url - URL to be used in the request
+/// * headers - Headers to be used in the request
+/// * payload - Payload to be used in the request
+/// * pagination - Pagination type to be used in the request
 #[derive(Debug, Clone)]
-pub struct Request<P: Serialize + Clone = (), U: Pagination + Clone = RequestPagination> {
+pub struct Request<P: Serialize + Clone = (), U: Pagination = RequestPagination> {
     pub(crate) method: Method,
     pub(crate) request_url: RequestUrl,
     pub(crate) headers: Option<HeaderMap>,
@@ -17,7 +29,8 @@ pub struct Request<P: Serialize + Clone = (), U: Pagination + Clone = RequestPag
     pub(crate) pagination: U,
 }
 
-impl<P: Serialize + Clone, U: Pagination + Clone> Request<P, U> {
+impl<P: Serialize + Clone, U: Pagination> Request<P, U> {
+    /// Create a new request
     pub fn new(
         method: Method,
         request_url: RequestUrl,
@@ -34,7 +47,8 @@ impl<P: Serialize + Clone, U: Pagination + Clone> Request<P, U> {
         }
     }
 
-    pub async fn send<T>(&self) -> Result<T>
+    /// Send the request and parse the response into type 'T'
+    pub async fn send<T>(&mut self) -> Result<T>
     where
         T: DeserializeOwned + Serialize,
         P: DeserializeOwned + Serialize,
@@ -91,7 +105,7 @@ impl<P: Serialize + Clone, U: Pagination + Clone> Request<P, U> {
 
     async fn execute_reqwest(request: &reqwest::Request) -> Result<reqwest::Response> {
         let client = Client::new();
-        let response = client
+        let mut response = client
             .execute(request.try_clone().ok_or(ApiError::ReqwestClone)?)
             .await
             .map_err(|e| ApiError::ReqwestExecute(e))?;
@@ -106,6 +120,14 @@ impl<P: Serialize + Clone, U: Pagination + Clone> Request<P, U> {
             let time = std::time::Duration::from_millis(1100);
             tokio::time::sleep(time).await;
         }
+        if response.status() == StatusCode::TOO_MANY_REQUESTS {
+            let time = std::time::Duration::from_millis(1100);
+            tokio::time::sleep(time).await;
+            response = client
+                .execute(request.try_clone().ok_or(ApiError::ReqwestClone)?)
+                .await
+                .map_err(|e| ApiError::ReqwestExecute(e))?;
+        }
 
         match response.status() {
             StatusCode::OK
@@ -116,7 +138,7 @@ impl<P: Serialize + Clone, U: Pagination + Clone> Request<P, U> {
         }
     }
 
-    fn get_page_count(headers: &HeaderMap, pagination: &PaginationRule) -> u32 {
+    fn get_page_count(headers: &HeaderMap, pagination: &PaginationRule) -> usize {
         let page_count = match headers
             .get("X-Total")
             .and_then(|v| v.to_str().ok())
@@ -129,12 +151,11 @@ impl<P: Serialize + Clone, U: Pagination + Clone> Request<P, U> {
                     .and_then(|v| v.to_str().ok())
                     .and_then(|s| s.parse::<f32>().ok())
                     .unwrap_or(1.);
-                (total / per_page).ceil() as u32
+                (total / per_page).ceil() as usize
             }
         };
 
         match pagination {
-            PaginationRule::None => 1,
             PaginationRule::Fixed(limit) => std::cmp::min(page_count, limit.to_owned()),
             PaginationRule::OneShot => page_count,
         }
@@ -152,7 +173,7 @@ impl<P: Serialize + Clone, U: Pagination + Clone> Request<P, U> {
     }
 
     async fn parse_response_array<T>(
-        &self,
+        &mut self,
         request: reqwest::Request,
         first_response: reqwest::Response,
     ) -> Result<T>
@@ -161,21 +182,15 @@ impl<P: Serialize + Clone, U: Pagination + Clone> Request<P, U> {
     {
         let page_count =
             Self::get_page_count(first_response.headers(), self.pagination.get_pagination());
-        let mut pagination = self.pagination.clone();
-        pagination.next();
+        self.pagination.next();
         let mut json_values = Value::Array(Self::parse_response(first_response).await?);
-        let client = Client::new();
 
         for _ in 1..page_count {
-            pagination.next();
-            let next_url = self.request_url.as_url(&pagination)?;
+            let next_url = self.request_url.as_url(&self.pagination)?;
 
             let next_request = Self::build_next_reqwest(&request, next_url)?;
 
-            let next_page_response = client
-                .execute(next_request)
-                .await
-                .map_err(|e| ApiError::ReqwestExecute(e))?;
+            let next_page_response = Self::execute_reqwest(&next_request).await?;
 
             match &mut json_values {
                 Value::Array(a) => {
@@ -185,10 +200,12 @@ impl<P: Serialize + Clone, U: Pagination + Clone> Request<P, U> {
                 }
                 _ => return Err(ApiError::JsonValueNotArray),
             }
+            self.pagination.next();
         }
         serde_json::from_value::<T>(json_values).map_err(|e| ApiError::ResponseParse(e))
     }
 
+    /// Pagination setter to override the Api pagination
     pub fn pagination(mut self, pagination: PaginationRule) -> Self {
         self.pagination = self.pagination.pagination(pagination);
         self

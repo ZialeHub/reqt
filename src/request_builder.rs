@@ -7,8 +7,9 @@ use crate::{
     request_url::RequestUrl,
 };
 
+/// Builder to create a request
 #[derive(Debug, Clone)]
-pub struct RequestBuilder<P: Serialize + Clone = (), U: Pagination + Clone = RequestPagination> {
+pub struct RequestBuilder<P: Serialize + Clone = (), U: Pagination = RequestPagination> {
     pub(crate) method: Method,
     pub(crate) request_url: RequestUrl,
     pub(crate) headers: Option<HeaderMap>,
@@ -16,7 +17,7 @@ pub struct RequestBuilder<P: Serialize + Clone = (), U: Pagination + Clone = Req
     pub(crate) pagination: U,
 }
 
-impl<P: Serialize + Clone, U: Pagination + Clone> RequestBuilder<P, U> {
+impl<P: Serialize + Clone, U: Pagination> RequestBuilder<P, U> {
     pub fn new(request_url: RequestUrl, pagination: U) -> Self {
         Self {
             method: Method::GET,
