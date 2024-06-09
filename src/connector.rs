@@ -25,7 +25,7 @@ pub enum AuthorizationType {
     // `Authorization: Bearer <token>`
     Bearer(String),
     // `api_key` into request headers
-    // `Authorization: Apikey 1234567890abcdef`
+    // `X-API-Key: 1234567890abcdef`
     ApiKey(String),
     // `access_token` into request headers
     // `Authorization: Bearer <access_token>`
@@ -42,6 +42,12 @@ impl AuthorizationType {
     pub fn header_value(&self, headers: &mut HeaderMap) -> Result<()> {
         match self {
             AuthorizationType::None => {}
+            AuthorizationType::ApiKey(_) => {
+                headers.insert(
+                    "X-API-Key",
+                    reqwest::header::HeaderValue::from_str(&self.to_string())?,
+                );
+            }
             _ => {
                 headers.insert(
                     reqwest::header::AUTHORIZATION,
@@ -58,7 +64,7 @@ impl Display for AuthorizationType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             AuthorizationType::Basic(token) => write!(f, "Basic {}", token),
-            AuthorizationType::ApiKey(token) => write!(f, "ApiKey {}", token),
+            AuthorizationType::ApiKey(token) => write!(f, "{}", token),
             AuthorizationType::Bearer(token) | AuthorizationType::OAuth2(token) => {
                 write!(f, "Bearer {}", token)
             }
