@@ -1,11 +1,11 @@
 use crate::{
-    connector::{Api, Authorization},
+    connector::{Api, AuthorizationType},
     pagination::{Pagination, PaginationRule, RequestPagination},
 };
 
 #[derive(Debug, Clone)]
 pub struct ApiBuilder<T: Pagination = RequestPagination> {
-    pub(crate) authorization: Authorization,
+    pub(crate) authorization: AuthorizationType,
     pub(crate) endpoint: String,
     pub(crate) pagination: T,
 }
@@ -13,7 +13,7 @@ pub struct ApiBuilder<T: Pagination = RequestPagination> {
 impl<T: Pagination> ApiBuilder<T> {
     pub fn new(endpoint: impl ToString, pagination: T) -> Self {
         Self {
-            authorization: Authorization::None,
+            authorization: AuthorizationType::None,
             endpoint: endpoint.to_string(),
             pagination,
         }
@@ -25,22 +25,22 @@ impl<T: Pagination> ApiBuilder<T> {
     }
 
     pub fn bearer(mut self, token: impl ToString) -> Self {
-        self.authorization = Authorization::Bearer(token.to_string());
+        self.authorization = AuthorizationType::Bearer(token.to_string());
         self
     }
 
     pub fn oauth2(mut self, token: impl ToString) -> Self {
-        self.authorization = Authorization::OAuth2(token.to_string());
+        self.authorization = AuthorizationType::OAuth2(token.to_string());
         self
     }
 
     pub fn basic(mut self, token: impl ToString) -> Self {
-        self.authorization = Authorization::Basic(token.to_string());
+        self.authorization = AuthorizationType::Basic(token.to_string());
         self
     }
 
     pub fn api_key(mut self, token: impl ToString) -> Self {
-        self.authorization = Authorization::ApiKey(token.to_string());
+        self.authorization = AuthorizationType::ApiKey(token.to_string());
         self
     }
 

@@ -54,6 +54,6 @@ impl RequestUrl {
         query = query.join(pagination.get_current_page());
 
         Url::parse(&format!("{}{}{}", self.endpoint, self.route, query))
-            .map_err(|e| ApiError::WrongUrlFormat(e))
+            .map_err(ApiError::WrongUrlFormat)
     }
 }
