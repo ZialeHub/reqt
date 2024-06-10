@@ -2,8 +2,10 @@ use reqwest::{Method, Url};
 
 use crate::{
     error::{ApiError, Result},
+    filter::Filter,
     pagination::Pagination,
     query::Query,
+    sort::Sort,
 };
 
 /// Structure to create a request URL
@@ -48,10 +50,17 @@ impl RequestUrl {
 
     /// Convert the request URL to a URL
     /// that can be used in a request (Contains the query with pagination)
-    pub fn as_url<U: Pagination>(&self, pagination: &U) -> Result<Url> {
+    pub fn as_url<P: Pagination, F: Filter, S: Sort>(
+        &self,
+        pagination: &P,
+        filter: &F,
+        sort: &S,
+    ) -> Result<Url> {
         let mut query = self.query.clone();
 
         query = query.join(pagination.get_current_page());
+        query = query.join(filter.to_query());
+        query = query.join(sort.to_query());
 
         Url::parse(&format!("{}{}{}", self.endpoint, self.route, query))
             .map_err(ApiError::WrongUrlFormat)

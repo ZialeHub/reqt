@@ -5,11 +5,13 @@ use serde::Serialize;
 
 use crate::{
     error::Result,
+    filter::{Filter, FilterRule},
     pagination::{Pagination, PaginationRule, RequestPagination},
     prelude::ApiBuilder,
     query::Query,
     request::Request,
     request_url::RequestUrl,
+    sort::{Sort, SortRule},
 };
 
 /// Authorization type to be used in the API
@@ -83,13 +85,15 @@ impl Display for AuthorizationType {
 /// * endpoint - API endpoint to be used in the request
 /// * pagination - Pagination type to be used in the request
 #[derive(Debug, Clone)]
-pub struct Api<T: Pagination = RequestPagination> {
+pub struct Api<P: Pagination = RequestPagination, F: Filter = FilterRule, S: Sort = SortRule> {
     pub(crate) authorization: AuthorizationType,
     pub(crate) endpoint: String,
-    pub(crate) pagination: T,
+    pub(crate) pagination: P,
+    pub(crate) filter: F,
+    pub(crate) sort: S,
 }
 
-impl<T: Pagination> Api<T> {
+impl<P: Pagination, F: Filter, S: Sort> Api<P, F, S> {
     pub fn pagination(mut self, pagination: PaginationRule) -> Self {
         self.pagination = self.pagination.pagination(pagination);
         self
@@ -100,8 +104,8 @@ impl<T: Pagination> Api<T> {
     }
 }
 
-impl<T: Pagination> Connector<T> for Api<T> {
-    fn get(&self, route: impl ToString, query: Query) -> Result<Request<(), T>> {
+impl<P: Pagination, F: Filter, S: Sort> Connector<P, F, S> for Api<P, F, S> {
+    fn get(&self, route: impl ToString, query: Query) -> Result<Request<(), P, F, S>> {
         let mut headers = HeaderMap::new();
 
         self.authorization.header_value(&mut headers)?;
@@ -111,24 +115,20 @@ impl<T: Pagination> Connector<T> for Api<T> {
             .method(Method::GET)
             .query(query);
 
-        let request = Request::<(), T>::new(
-            url.method.clone(),
-            url,
-            Some(headers),
-            None,
-            self.pagination.clone(),
-        )
-        .pagination(self.pagination.get_pagination().clone());
+        let request = Request::<(), P, F, S>::new(url.method.clone(), url, Some(headers), None)
+            .pagination(self.pagination.get_pagination().clone())
+            .filter(self.filter.clone())
+            .sort(self.sort.clone());
 
         Ok(request)
     }
 
-    fn post<P: Serialize + Clone>(
+    fn post<B: Serialize + Clone>(
         &self,
         route: impl ToString,
         query: Query,
-        payload: Option<P>,
-    ) -> Result<Request<P, T>> {
+        body: Option<B>,
+    ) -> Result<Request<B, P, F, S>> {
         let mut headers = HeaderMap::new();
 
         self.authorization.header_value(&mut headers)?;
@@ -143,24 +143,20 @@ impl<T: Pagination> Connector<T> for Api<T> {
             .method(Method::POST)
             .query(query);
 
-        let request = Request::<P, T>::new(
-            url.method.clone(),
-            url,
-            Some(headers),
-            payload,
-            self.pagination.clone(),
-        )
-        .pagination(self.pagination.get_pagination().clone());
+        let request = Request::<B, P, F, S>::new(url.method.clone(), url, Some(headers), body)
+            .pagination(self.pagination.get_pagination().clone())
+            .filter(self.filter.clone())
+            .sort(self.sort.clone());
 
         Ok(request)
     }
 
-    fn put<P: Serialize + Clone>(
+    fn put<B: Serialize + Clone>(
         &self,
         route: impl ToString,
         query: Query,
-        payload: Option<P>,
-    ) -> Result<Request<P, T>> {
+        body: Option<B>,
+    ) -> Result<Request<B, P, F, S>> {
         let mut headers = HeaderMap::new();
 
         self.authorization.header_value(&mut headers)?;
@@ -175,24 +171,20 @@ impl<T: Pagination> Connector<T> for Api<T> {
             .method(Method::PUT)
             .query(query);
 
-        let request = Request::<P, T>::new(
-            url.method.clone(),
-            url,
-            Some(headers),
-            payload,
-            self.pagination.clone(),
-        )
-        .pagination(self.pagination.get_pagination().clone());
+        let request = Request::<B, P, F, S>::new(url.method.clone(), url, Some(headers), body)
+            .pagination(self.pagination.get_pagination().clone())
+            .filter(self.filter.clone())
+            .sort(self.sort.clone());
 
         Ok(request)
     }
 
-    fn patch<P: Serialize + Clone>(
+    fn patch<B: Serialize + Clone>(
         &self,
         route: impl ToString,
         query: Query,
-        payload: Option<P>,
-    ) -> Result<Request<P, T>> {
+        body: Option<B>,
+    ) -> Result<Request<B, P, F, S>> {
         let mut headers = HeaderMap::new();
 
         self.authorization.header_value(&mut headers)?;
@@ -207,19 +199,15 @@ impl<T: Pagination> Connector<T> for Api<T> {
             .method(Method::PATCH)
             .query(query);
 
-        let request = Request::<P, T>::new(
-            url.method.clone(),
-            url,
-            Some(headers),
-            payload,
-            self.pagination.clone(),
-        )
-        .pagination(self.pagination.get_pagination().clone());
+        let request = Request::<B, P, F, S>::new(url.method.clone(), url, Some(headers), body)
+            .pagination(self.pagination.get_pagination().clone())
+            .filter(self.filter.clone())
+            .sort(self.sort.clone());
 
         Ok(request)
     }
 
-    fn delete(&self, route: impl ToString, query: Query) -> Result<Request<(), T>> {
+    fn delete(&self, route: impl ToString, query: Query) -> Result<Request<(), P, F, S>> {
         let mut headers = HeaderMap::new();
 
         self.authorization.header_value(&mut headers)?;
@@ -229,14 +217,10 @@ impl<T: Pagination> Connector<T> for Api<T> {
             .method(Method::DELETE)
             .query(query);
 
-        let request = Request::<(), T>::new(
-            url.method.clone(),
-            url,
-            Some(headers),
-            None,
-            self.pagination.clone(),
-        )
-        .pagination(self.pagination.get_pagination().clone());
+        let request = Request::<(), P, F, S>::new(url.method.clone(), url, Some(headers), None)
+            .pagination(self.pagination.get_pagination().clone())
+            .filter(self.filter.clone())
+            .sort(self.sort.clone());
 
         Ok(request)
     }
@@ -244,33 +228,38 @@ impl<T: Pagination> Connector<T> for Api<T> {
 
 /// Trait to implement on your connector structure
 /// to allow the use of the `connect` method
-pub trait Authorization<T: Pagination + Default + Send = RequestPagination> {
-    fn connect(&self, url: &str) -> impl Future<Output = Result<Api<T>>> + Send {
-        async move { Ok(ApiBuilder::new(url, T::default()).build()) }
+pub trait Authorization<
+    P: Pagination + Send = RequestPagination,
+    F: Filter + Send = FilterRule,
+    S: Sort + Send = SortRule,
+>
+{
+    fn connect(&self, url: &str) -> impl Future<Output = Result<Api<P, F, S>>> + Send {
+        async move { Ok(ApiBuilder::new(url).build()) }
     }
 }
 
 /// Trait to implement on your connector structure
 /// to allow the use of the `get`, `post`, `put`, `patch`, and `delete` methods
-pub trait Connector<T: Pagination> {
-    fn get(&self, route: impl ToString, query: Query) -> Result<Request<(), T>>;
-    fn post<P: Serialize + Clone>(
+pub trait Connector<P: Pagination, F: Filter, S: Sort> {
+    fn get(&self, route: impl ToString, query: Query) -> Result<Request<(), P, F, S>>;
+    fn post<B: Serialize + Clone>(
         &self,
         route: impl ToString,
         query: Query,
-        payload: Option<P>,
-    ) -> Result<Request<P, T>>;
-    fn put<P: Serialize + Clone>(
+        body: Option<B>,
+    ) -> Result<Request<B, P, F, S>>;
+    fn put<B: Serialize + Clone>(
         &self,
         route: impl ToString,
         query: Query,
-        payload: Option<P>,
-    ) -> Result<Request<P, T>>;
-    fn patch<P: Serialize + Clone>(
+        body: Option<B>,
+    ) -> Result<Request<B, P, F, S>>;
+    fn patch<B: Serialize + Clone>(
         &self,
         route: impl ToString,
         query: Query,
-        payload: Option<P>,
-    ) -> Result<Request<P, T>>;
-    fn delete(&self, route: impl ToString, query: Query) -> Result<Request<(), T>>;
+        body: Option<B>,
+    ) -> Result<Request<B, P, F, S>>;
+    fn delete(&self, route: impl ToString, query: Query) -> Result<Request<(), P, F, S>>;
 }

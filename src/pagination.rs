@@ -1,4 +1,5 @@
 use crate::query::Query;
+use proc_macro_api_manager::Pagination;
 
 /// Pagination rule to be used in the API
 ///
@@ -34,7 +35,7 @@ impl Default for PaginationRule {
 /// The default pagination rule is:
 /// 'page[number]=x' with x starting at 1
 /// 'page[size]=y' with y starting at 100
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Pagination)]
 pub struct RequestPagination {
     pub(crate) size: usize,
     pub(crate) current_page: usize,
@@ -44,61 +45,16 @@ pub struct RequestPagination {
 impl Default for RequestPagination {
     fn default() -> Self {
         Self {
-            size: 100,
+            size: 1,
             current_page: 1,
             pagination: PaginationRule::default(),
         }
     }
 }
 
-impl Pagination for RequestPagination {
-    fn size(mut self, size: usize) -> Self {
-        self.size = size;
-        self
-    }
-
-    fn pagination(mut self, pagination: PaginationRule) -> Self {
-        self.pagination = pagination;
-        self
-    }
-
-    fn get_pagination(&self) -> &PaginationRule {
-        &self.pagination
-    }
-
-    fn current_page(&self) -> usize {
-        self.current_page
-    }
-
-    fn get_current_page(&self) -> Query {
-        Query::new()
-            .add("page[number]", self.current_page)
-            .add("page[size]", self.size)
-    }
-
-    fn get_size(&self) -> Query {
-        Query::new().add("page[size]", self.size)
-    }
-
-    fn next(&mut self) {
-        self.current_page += 1;
-    }
-
-    fn get_next_page(&mut self) -> Query {
-        self.current_page += 1;
-        Query::new()
-            .add("page[number]", self.current_page)
-            .add("page[size]", self.size)
-    }
-
-    fn reset(&mut self) {
-        self.current_page = 1;
-    }
-}
-
 /// Pagination trait to be implemented by the user
 /// to allow custom pagination rules for the API
-pub trait Pagination: Clone {
+pub trait Pagination: Clone + Default {
     fn size(self, size: usize) -> Self;
     fn reset(&mut self);
     fn pagination(self, rule: PaginationRule) -> Self;

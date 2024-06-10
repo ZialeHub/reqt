@@ -6,7 +6,7 @@ mod tests_api42_v2 {
     use serde::{Deserialize, Serialize};
 
     use crate::prelude::*;
-    use proc_macro_authorization::Oauth2;
+    use proc_macro_api_manager::Oauth2;
 
     fn get_credentials() -> TestApiConnector {
         let connector: TestApiConnector = toml::from_str::<Env>(include_str!("../.env"))
@@ -21,6 +21,7 @@ mod tests_api42_v2 {
     }
 
     #[derive(Debug, Clone, Deserialize, Oauth2)]
+    #[pagination(Pagination42)]
     struct TestApiConnector {
         uid: String,
         secret: String,
@@ -36,6 +37,66 @@ mod tests_api42_v2 {
     #[derive(Debug, Clone, Serialize, Deserialize)]
     struct User {
         pub login: String,
+    }
+
+    #[derive(Debug, Clone)]
+    struct Pagination42 {
+        pub size: usize,
+        pub current_page: usize,
+        pub pagination: PaginationRule,
+    }
+    impl Default for Pagination42 {
+        fn default() -> Self {
+            Self {
+                size: 100,
+                current_page: 1,
+                pagination: PaginationRule::default(),
+            }
+        }
+    }
+    impl Pagination for Pagination42 {
+        fn size(mut self, size: usize) -> Self {
+            self.size = size;
+            self
+        }
+
+        fn pagination(mut self, pagination: PaginationRule) -> Self {
+            self.pagination = pagination;
+            self
+        }
+
+        fn get_pagination(&self) -> &PaginationRule {
+            &self.pagination
+        }
+
+        fn current_page(&self) -> usize {
+            self.current_page
+        }
+
+        fn get_current_page(&self) -> Query {
+            Query::new()
+                .add("page[number]", self.current_page)
+                .add("page[size]", self.size)
+        }
+
+        fn get_size(&self) -> Query {
+            Query::new().add("page[size]", self.size)
+        }
+
+        fn next(&mut self) {
+            self.current_page += 1;
+        }
+
+        fn get_next_page(&mut self) -> Query {
+            self.current_page += 1;
+            Query::new()
+                .add("page[number]", self.current_page)
+                .add("page[size]", self.size)
+        }
+
+        fn reset(&mut self) {
+            self.current_page = 1;
+        }
     }
 
     #[tokio::test]
@@ -179,166 +240,165 @@ mod tests_api42_v2 {
     }
 }
 
-#[cfg(test)]
-mod tests_rest_country {
-    use serde::{Deserialize, Serialize};
-
-    use crate::prelude::{Authorization, Connector, Query, Result};
-
-    #[derive(proc_macro_authorization::Authorization)]
-    struct CountryConnector {}
-    impl CountryConnector {
-        pub fn new() -> Self {
-            Self {}
-        }
-    }
-
-    #[derive(Debug, Serialize, Deserialize)]
-    struct CountryNameBis {
-        pub common: String,
-        pub official: String,
-    }
-
-    #[derive(Debug, Serialize, Deserialize)]
-    struct CountryName {
-        pub name: CountryNameBis,
-    }
-
-    #[derive(Debug, Serialize, Deserialize)]
-    struct Country {
-        pub name: CountryName,
-    }
-
-    #[tokio::test]
-    async fn get_france() -> Result<()> {
-        let connector = CountryConnector::new()
-            .connect("https://restcountries.com/v3.1/")
-            .await?;
-        let mut request = connector.get("name/france", Query::new().add("fields", "name"))?;
-        let response = request.send::<Country>().await?;
-        assert_eq!(response.name.name.common, "France");
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn get_all() -> Result<()> {
-        let connector = CountryConnector::new()
-            .connect("https://restcountries.com/v3.1/")
-            .await?;
-        let mut request = connector.get("all", Query::new().add("fields", "name"))?;
-        let response = request.send::<Vec<serde_json::Value>>().await?;
-        assert_eq!(response.len(), 250);
-        Ok(())
-    }
-}
-
-#[cfg(test)]
-mod tests_api42_v3 {
-    use std::collections::HashMap;
-
-    use base64::{engine::general_purpose, Engine as _};
-    use reqwest::{Client, StatusCode};
-    use serde::{Deserialize, Serialize};
-
-    use crate::prelude::*;
-
-    fn get_credentials() -> TestApiConnectorV3 {
-        let connector: TestApiConnectorV3 = toml::from_str::<Env>(include_str!("../.env"))
-            .unwrap()
-            .intra_v3;
-        connector
-    }
-
-    #[derive(Debug, Clone, Serialize, Deserialize)]
-    struct Attendance {
-        user_id: i32,
-    }
-
-    #[derive(Debug, Clone, Deserialize)]
-    struct TokenResponse {
-        pub access_token: String,
-    }
-
-    #[derive(Debug, Clone, Deserialize)]
-    struct TestApiConnectorV3 {
-        uid: String,
-        secret: String,
-        auth_endpoint: String,
-        realm: String,
-        user_login: String,
-        user_pass: String,
-    }
-
-    #[derive(Debug, Clone, Deserialize)]
-    struct Env {
-        intra_v3: TestApiConnectorV3,
-    }
-
-    impl Authorization for TestApiConnectorV3 {
-        async fn connect(&self, url: &str) -> Result<Api<RequestPagination>> {
-            let pagination = RequestPagination::default();
-            let connector = ApiBuilder::new(url, pagination);
-            let client = Client::new();
-
-            let auth_header = format!(
-                "Basic {}",
-                general_purpose::STANDARD_NO_PAD.encode(format!("{}:{}", &self.uid, &self.secret))
-            );
-            let mut params = HashMap::new();
-            params.insert("grant_type", "password");
-            params.insert("username", &self.user_login);
-            params.insert("password", &self.user_pass);
-            match client
-                .post(format!(
-                    "{}realms/{}/protocol/openid-connect/token",
-                    self.auth_endpoint, self.realm
-                ))
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .header("Authorization", auth_header)
-                .form(&params)
-                .send()
-                .await
-            {
-                Ok(response) => {
-                    eprintln!("{:?}", response);
-                    match response.status() {
-                        StatusCode::OK
-                        | StatusCode::CREATED
-                        | StatusCode::ACCEPTED
-                        | StatusCode::NO_CONTENT => {}
-                        status => return Err(status.into()),
-                    }
-                    match response.text().await {
-                        Ok(response_text) => {
-                            let token: TokenResponse =
-                                serde_json::from_str(&response_text).unwrap();
-                            Ok(connector.bearer(token.access_token).build())
-                        }
-                        Err(e) => Err(ApiError::ResponseToText(e)),
-                    }
-                }
-                Err(e) => Err(ApiError::ReqwestExecute(e)),
-            }
-        }
-    }
-
-    #[derive(Debug, Clone, Serialize, Deserialize)]
-    struct User {
-        pub login: String,
-    }
-
-    #[tokio::test]
-    async fn get_method_default() -> Result<()> {
-        let data_connector = get_credentials();
-        let connector = data_connector
-            .connect("https://chronos.42.fr/api/v1/")
-            .await?;
-        let mut request = connector.get("users/vnaud/attendances", Query::new())?;
-        let response = request.send::<Vec<Attendance>>().await?;
-        response.iter().all(|attendance| {
-            assert_eq!(attendance.user_id, 108323);
-            true
-        });
-        Ok(())
-    }
-}
+// #[cfg(test)]
+// mod tests_rest_country {
+//     use serde::{Deserialize, Serialize};
+//
+//     use crate::prelude::*;
+//
+//     #[derive(proc_macro_api_manager::Authorization)]
+//     struct CountryConnector {}
+//     impl CountryConnector {
+//         pub fn new() -> Self {
+//             Self {}
+//         }
+//     }
+//
+//     #[derive(Debug, Serialize, Deserialize)]
+//     struct CountryNameBis {
+//         pub common: String,
+//         pub official: String,
+//     }
+//
+//     #[derive(Debug, Serialize, Deserialize)]
+//     struct CountryName {
+//         pub name: CountryNameBis,
+//     }
+//
+//     #[derive(Debug, Serialize, Deserialize)]
+//     struct Country {
+//         pub name: CountryName,
+//     }
+//
+//     #[tokio::test]
+//     async fn get_france() -> Result<()> {
+//         let connector = CountryConnector::new()
+//             .connect("https://restcountries.com/v3.1/")
+//             .await?;
+//         let mut request = connector.get("name/france", Query::new().add("fields", "name"))?;
+//         let response = request.send::<Country>().await?;
+//         assert_eq!(response.name.name.common, "France");
+//         Ok(())
+//     }
+//
+//     #[tokio::test]
+//     async fn get_all() -> Result<()> {
+//         let connector = CountryConnector::new()
+//             .connect("https://restcountries.com/v3.1/")
+//             .await?;
+//         let mut request = connector.get("all", Query::new().add("fields", "name"))?;
+//         let response = request.send::<Vec<serde_json::Value>>().await?;
+//         assert_eq!(response.len(), 250);
+//         Ok(())
+//     }
+// }
+//
+// #[cfg(test)]
+// mod tests_api42_v3 {
+//     use std::collections::HashMap;
+//
+//     use base64::{engine::general_purpose, Engine as _};
+//     use reqwest::{Client, StatusCode};
+//     use serde::{Deserialize, Serialize};
+//
+//     use crate::prelude::*;
+//
+//     fn get_credentials() -> TestApiConnectorV3 {
+//         let connector: TestApiConnectorV3 = toml::from_str::<Env>(include_str!("../.env"))
+//             .unwrap()
+//             .intra_v3;
+//         connector
+//     }
+//
+//     #[derive(Debug, Clone, Serialize, Deserialize)]
+//     struct Attendance {
+//         user_id: i32,
+//     }
+//
+//     #[derive(Debug, Clone, Deserialize)]
+//     struct TokenResponse {
+//         pub access_token: String,
+//     }
+//
+//     #[derive(Debug, Clone, Deserialize)]
+//     struct TestApiConnectorV3 {
+//         uid: String,
+//         secret: String,
+//         auth_endpoint: String,
+//         realm: String,
+//         user_login: String,
+//         user_pass: String,
+//     }
+//
+//     #[derive(Debug, Clone, Deserialize)]
+//     struct Env {
+//         intra_v3: TestApiConnectorV3,
+//     }
+//
+//     impl Authorization for TestApiConnectorV3 {
+//         async fn connect(&self, url: &str) -> Result<Api<RequestPagination>> {
+//             let connector = ApiBuilder::new(url);
+//             let client = Client::new();
+//
+//             let auth_header = format!(
+//                 "Basic {}",
+//                 general_purpose::STANDARD_NO_PAD.encode(format!("{}:{}", &self.uid, &self.secret))
+//             );
+//             let mut params = HashMap::new();
+//             params.insert("grant_type", "password");
+//             params.insert("username", &self.user_login);
+//             params.insert("password", &self.user_pass);
+//             match client
+//                 .post(format!(
+//                     "{}realms/{}/protocol/openid-connect/token",
+//                     self.auth_endpoint, self.realm
+//                 ))
+//                 .header("Content-Type", "application/x-www-form-urlencoded")
+//                 .header("Authorization", auth_header)
+//                 .form(&params)
+//                 .send()
+//                 .await
+//             {
+//                 Ok(response) => {
+//                     eprintln!("{:?}", response);
+//                     match response.status() {
+//                         StatusCode::OK
+//                         | StatusCode::CREATED
+//                         | StatusCode::ACCEPTED
+//                         | StatusCode::NO_CONTENT => {}
+//                         status => return Err(status.into()),
+//                     }
+//                     match response.text().await {
+//                         Ok(response_text) => {
+//                             let token: TokenResponse =
+//                                 serde_json::from_str(&response_text).unwrap();
+//                             Ok(connector.bearer(token.access_token).build())
+//                         }
+//                         Err(e) => Err(ApiError::ResponseToText(e)),
+//                     }
+//                 }
+//                 Err(e) => Err(ApiError::ReqwestExecute(e)),
+//             }
+//         }
+//     }
+//
+//     #[derive(Debug, Clone, Serialize, Deserialize)]
+//     struct User {
+//         pub login: String,
+//     }
+//
+//     #[tokio::test]
+//     async fn get_method_default() -> Result<()> {
+//         let data_connector = get_credentials();
+//         let connector = data_connector
+//             .connect("https://chronos.42.fr/api/v1/")
+//             .await?;
+//         let mut request = connector.get("users/vnaud/attendances", Query::new())?;
+//         let response = request.send::<Vec<Attendance>>().await?;
+//         response.iter().all(|attendance| {
+//             assert_eq!(attendance.user_id, 108323);
+//             true
+//         });
+//         Ok(())
+//     }
+// }

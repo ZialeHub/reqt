@@ -4,46 +4,56 @@ use serde_json::Value;
 
 use crate::{
     error::{ApiError, Result},
+    filter::{Filter, FilterRule},
     pagination::{Pagination, PaginationRule, RequestPagination},
     request_url::RequestUrl,
+    sort::{Sort, SortRule},
 };
 
 /// Structure to send requests to the API
 ///
 /// # Parameters
-/// * `P` - Payload type to be used in the request
+/// * `P` - body type to be used in the request
 /// * `U` - Pagination type to be used in the request
 ///
 /// # Attributes
 /// * method - HTTP method to be used in the request
 /// * request_url - URL to be used in the request
 /// * headers - Headers to be used in the request
-/// * payload - Payload to be used in the request
+/// * body - body to be used in the request
 /// * pagination - Pagination type to be used in the request
 #[derive(Debug, Clone)]
-pub struct Request<P: Serialize + Clone = (), U: Pagination = RequestPagination> {
+pub struct Request<
+    B: Serialize + Clone = (),
+    P: Pagination = RequestPagination,
+    F: Filter = FilterRule,
+    S: Sort = SortRule,
+> {
     pub(crate) method: Method,
     pub(crate) request_url: RequestUrl,
     pub(crate) headers: Option<HeaderMap>,
-    pub(crate) payload: Option<P>,
-    pub(crate) pagination: U,
+    pub(crate) body: Option<B>,
+    pub(crate) pagination: P,
+    pub(crate) filter: F,
+    pub(crate) sort: S,
 }
 
-impl<P: Serialize + Clone, U: Pagination> Request<P, U> {
+impl<B: Serialize + Clone, P: Pagination, F: Filter, S: Sort> Request<B, P, F, S> {
     /// Create a new request
     pub fn new(
         method: Method,
         request_url: RequestUrl,
         headers: Option<HeaderMap>,
-        payload: Option<P>,
-        pagination: U,
+        body: Option<B>,
     ) -> Self {
         Self {
             method,
             request_url,
             headers,
-            payload,
-            pagination,
+            body,
+            pagination: P::default(),
+            filter: F::default(),
+            sort: S::default(),
         }
     }
 
@@ -51,27 +61,29 @@ impl<P: Serialize + Clone, U: Pagination> Request<P, U> {
     pub async fn send<T>(&mut self) -> Result<T>
     where
         T: DeserializeOwned + Serialize,
-        P: DeserializeOwned + Serialize,
+        B: DeserializeOwned + Serialize,
     {
-        let request = self.build_reqwest::<P>(self.payload.clone())?;
+        let request = self.build_reqwest::<B>(self.body.clone())?;
         let first_response = Self::execute_reqwest(&request).await?;
         self.parse_response_array(request, first_response).await
     }
 
-    fn build_reqwest<T>(&self, payload: Option<T>) -> Result<reqwest::Request>
+    fn build_reqwest<T>(&self, body: Option<T>) -> Result<reqwest::Request>
     where
         T: DeserializeOwned + Serialize,
     {
-        let body: Vec<u8> = match payload {
+        let body: Vec<u8> = match body {
             Some(p) => match serde_json::to_string(&p) {
                 Ok(s) => s.as_bytes().to_owned(),
-                Err(e) => return Err(ApiError::PayloadSerialization(e)),
+                Err(e) => return Err(ApiError::BodySerialization(e)),
             },
             None => Vec::new(),
         };
 
         let client = Client::new();
-        let url = self.request_url.as_url(&self.pagination)?;
+        let url = self
+            .request_url
+            .as_url(&self.pagination, &self.filter, &self.sort)?;
         let mut request_builder = client.request(self.method.clone(), url).body(body);
         if let Some(headers) = &self.headers {
             request_builder = request_builder.headers(headers.clone());
@@ -185,7 +197,9 @@ impl<P: Serialize + Clone, U: Pagination> Request<P, U> {
         let mut json_values = Value::Array(Self::parse_response(first_response).await?);
 
         for _ in 1..page_count {
-            let next_url = self.request_url.as_url(&self.pagination)?;
+            let next_url = self
+                .request_url
+                .as_url(&self.pagination, &self.filter, &self.sort)?;
 
             let next_request = Self::build_next_reqwest(&request, next_url)?;
 
@@ -207,6 +221,16 @@ impl<P: Serialize + Clone, U: Pagination> Request<P, U> {
     /// Pagination setter to override the Api pagination
     pub fn pagination(mut self, pagination: PaginationRule) -> Self {
         self.pagination = self.pagination.pagination(pagination);
+        self
+    }
+
+    pub fn filter(mut self, filter: F) -> Self {
+        self.filter = filter;
+        self
+    }
+
+    pub fn sort(mut self, sort: S) -> Self {
+        self.sort = sort;
         self
     }
 }

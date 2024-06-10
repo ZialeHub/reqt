@@ -1,21 +1,28 @@
 use crate::{
     connector::{Api, AuthorizationType},
+    filter::{Filter, FilterRule},
     pagination::{Pagination, PaginationRule, RequestPagination},
+    sort::{Sort, SortRule},
 };
 
 #[derive(Debug, Clone)]
-pub struct ApiBuilder<T: Pagination = RequestPagination> {
+pub struct ApiBuilder<P: Pagination = RequestPagination, F: Filter = FilterRule, S: Sort = SortRule>
+{
     pub(crate) authorization: AuthorizationType,
     pub(crate) endpoint: String,
-    pub(crate) pagination: T,
+    pub(crate) pagination: P,
+    pub(crate) filter: F,
+    pub(crate) sort: S,
 }
 
-impl<T: Pagination> ApiBuilder<T> {
-    pub fn new(endpoint: impl ToString, pagination: T) -> Self {
+impl<P: Pagination, F: Filter, S: Sort> ApiBuilder<P, F, S> {
+    pub fn new(endpoint: impl ToString) -> Self {
         Self {
             authorization: AuthorizationType::None,
             endpoint: endpoint.to_string(),
-            pagination,
+            pagination: P::default(),
+            filter: F::default(),
+            sort: S::default(),
         }
     }
 
@@ -49,11 +56,23 @@ impl<T: Pagination> ApiBuilder<T> {
         self
     }
 
-    pub fn build(self) -> Api<T> {
+    pub fn filter(mut self, filter: F) -> Self {
+        self.filter = filter;
+        self
+    }
+
+    pub fn sort(mut self, sort: S) -> Self {
+        self.sort = sort;
+        self
+    }
+
+    pub fn build(self) -> Api<P, F, S> {
         Api {
             authorization: self.authorization,
             endpoint: self.endpoint,
             pagination: self.pagination,
+            filter: F::default(),
+            sort: S::default(),
         }
     }
 }
