@@ -7,7 +7,7 @@ use crate::{
     filter::{Filter, FilterRule},
     pagination::{Pagination, PaginationRule, RequestPagination},
     request_url::RequestUrl,
-    sort::{Sort, SortRule},
+    sort::{Sort, SortOrder, SortRule},
 };
 
 /// Structure to send requests to the API
@@ -64,6 +64,7 @@ impl<B: Serialize + Clone, P: Pagination, F: Filter, S: Sort> Request<B, P, F, S
         B: DeserializeOwned + Serialize,
     {
         let request = self.build_reqwest::<B>(self.body.clone())?;
+        eprintln!("{:?}", request);
         let first_response = Self::execute_reqwest(&request).await?;
         self.parse_response_array(request, first_response).await
     }
@@ -224,13 +225,54 @@ impl<B: Serialize + Clone, P: Pagination, F: Filter, S: Sort> Request<B, P, F, S
         self
     }
 
-    pub fn filter(mut self, filter: F) -> Self {
+    pub fn set_filter(mut self, filter: F) -> Self {
         self.filter = filter;
         self
     }
 
-    pub fn sort(mut self, sort: S) -> Self {
+    pub fn set_sort(mut self, sort: S) -> Self {
         self.sort = sort;
+        self
+    }
+
+    pub fn pattern_filter(mut self, pattern: impl ToString) -> Self {
+        self.filter = self.filter.pattern(pattern);
+        self
+    }
+
+    pub fn filter<T: IntoIterator>(mut self, property: impl ToString, value: T) -> Self
+    where
+        T::Item: ToString,
+    {
+        self.filter = self.filter.filter(property, value);
+        self
+    }
+
+    pub fn filter_with<T: IntoIterator>(
+        mut self,
+        property: impl ToString,
+        filter: impl ToString,
+        value: T,
+    ) -> Self
+    where
+        T::Item: ToString,
+    {
+        self.filter = self.filter.filter_with(property, filter, value);
+        self
+    }
+
+    pub fn pattern_sort(mut self, pattern: impl ToString) -> Self {
+        self.sort = self.sort.pattern(pattern);
+        self
+    }
+
+    pub fn sort(mut self, property: impl ToString) -> Self {
+        self.sort = self.sort.sort(property);
+        self
+    }
+
+    pub fn sort_with(mut self, property: impl ToString, order: SortOrder) -> Self {
+        self.sort = self.sort.sort_with(property, order);
         self
     }
 }

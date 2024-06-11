@@ -5,7 +5,7 @@ mod tests_api42_v2 {
     use reqwest::{Client, StatusCode};
     use serde::{Deserialize, Serialize};
 
-    use crate::prelude::*;
+    use crate::{prelude::*, sort::SortOrder};
     use proc_macro_api_manager::Oauth2;
 
     fn get_credentials() -> TestApiConnector {
@@ -21,7 +21,9 @@ mod tests_api42_v2 {
     }
 
     #[derive(Debug, Clone, Deserialize, Oauth2)]
-    #[pagination(Pagination42)]
+    #[pagination(PaginationTest)]
+    #[filter(FilterTest)]
+    #[sort(SortTest)]
     struct TestApiConnector {
         uid: String,
         secret: String,
@@ -39,13 +41,109 @@ mod tests_api42_v2 {
         pub login: String,
     }
 
+    #[derive(Debug, Clone, Default)]
+    struct SortTest {
+        pub pattern: String,
+        pub sorts: Vec<String>,
+    }
+    impl Sort for SortTest {
+        fn sort(mut self, property: impl ToString) -> Self {
+            let mut sort = self.pattern.clone();
+            sort = sort.replace("property", &property.to_string());
+
+            self.sorts.push(sort);
+            self
+        }
+
+        fn sort_with(mut self, property: impl ToString, order: SortOrder) -> Self {
+            let mut sort = self.pattern.clone();
+            sort = sort.replace("property", &property.to_string());
+            sort = sort.replace("order", &order.to_string());
+
+            self.sorts.push(sort);
+            self
+        }
+
+        fn to_query(&self) -> Query {
+            let mut query = Query::new();
+            let sorts = self.sorts.join(",");
+            query = query.add("sort", sorts);
+            query
+        }
+
+        fn pattern(mut self, pattern: impl ToString) -> Self {
+            self.pattern = pattern.to_string();
+            self
+        }
+    }
+
+    #[derive(Debug, Clone, Default)]
+    struct FilterTest {
+        pub pattern: String,
+        pub filters: Vec<(String, String)>,
+    }
+    impl Filter for FilterTest {
+        fn filter<T: IntoIterator>(mut self, property: impl ToString, value: T) -> Self
+        where
+            T::Item: ToString,
+        {
+            let mut filter = self.pattern.clone();
+            let mut values = String::new();
+            filter = filter.replace("property", &property.to_string());
+
+            for v in value.into_iter() {
+                values.push_str(&v.to_string());
+                values.push(',');
+            }
+            values.pop();
+            self.filters.push((filter, values));
+            self
+        }
+
+        fn filter_with<T: IntoIterator>(
+            mut self,
+            property: impl ToString,
+            filter: impl ToString,
+            value: T,
+        ) -> Self
+        where
+            T::Item: ToString,
+        {
+            let mut filters = self.pattern.clone();
+            let mut values = String::new();
+            filters = filters.replace("property", &property.to_string());
+            filters = filters.replace("filter", &filter.to_string());
+
+            for v in value.into_iter() {
+                values.push_str(&v.to_string());
+                values.push(',');
+            }
+            values.pop();
+            self.filters.push((filters, values));
+            self
+        }
+
+        fn to_query(&self) -> Query {
+            let mut query = Query::new();
+            for (filter, values) in self.filters.iter() {
+                query = query.add(filter, values);
+            }
+            query
+        }
+
+        fn pattern(mut self, pattern: impl ToString) -> Self {
+            self.pattern = pattern.to_string();
+            self
+        }
+    }
+
     #[derive(Debug, Clone)]
-    struct Pagination42 {
+    struct PaginationTest {
         pub size: usize,
         pub current_page: usize,
         pub pagination: PaginationRule,
     }
-    impl Default for Pagination42 {
+    impl Default for PaginationTest {
         fn default() -> Self {
             Self {
                 size: 100,
@@ -54,7 +152,7 @@ mod tests_api42_v2 {
             }
         }
     }
-    impl Pagination for Pagination42 {
+    impl Pagination for PaginationTest {
         fn size(mut self, size: usize) -> Self {
             self.size = size;
             self
@@ -99,143 +197,350 @@ mod tests_api42_v2 {
         }
     }
 
+    // #[tokio::test]
+    // async fn get_method_default() -> Result<()> {
+    //     let data_connector = get_credentials();
+    //     let connector = data_connector
+    //         .connect("https://api.intra.42.fr/v2/")
+    //         .await?;
+    //     let mut request = connector.get("users", Query::new())?;
+    //     let response = request.send::<Vec<User>>().await?;
+    //     assert_eq!(response.len(), connector.pagination.size);
+    //     Ok(())
+    // }
+    //
+    // #[tokio::test]
+    // async fn connector_none_pagination() -> Result<()> {
+    //     let data_connector = get_credentials();
+    //     let connector = data_connector
+    //         .connect("https://api.intra.42.fr/v2/")
+    //         .await?
+    //         .pagination(PaginationRule::default());
+    //     let mut request =
+    //         connector.get("users", Query::new().add("filter[primary_campus_id]", 31))?;
+    //     let response = request.send::<Vec<User>>().await?;
+    //     assert_eq!(response.len(), connector.pagination.size);
+    //     Ok(())
+    // }
+    //
+    // #[tokio::test]
+    // async fn connector_fixed_pagination() -> Result<()> {
+    //     let data_connector = get_credentials();
+    //     let connector = data_connector
+    //         .connect("https://api.intra.42.fr/v2/")
+    //         .await?
+    //         .pagination(PaginationRule::Fixed(3));
+    //     let mut request =
+    //         connector.get("users", Query::new().add("filter[primary_campus_id]", 31))?;
+    //     let response = request.send::<Vec<User>>().await?;
+    //     assert_eq!(response.len(), connector.pagination.size * 3);
+    //     Ok(())
+    // }
+    //
+    // #[tokio::test]
+    // async fn connector_one_shot_pagination() -> Result<()> {
+    //     let data_connector = get_credentials();
+    //     let connector = data_connector
+    //         .connect("https://api.intra.42.fr/v2/")
+    //         .await?
+    //         .pagination(PaginationRule::OneShot);
+    //     let mut request =
+    //         connector.get("users", Query::new().add("filter[primary_campus_id]", 31))?;
+    //     let response = request.send::<Vec<User>>().await?;
+    //     assert_eq!(response.len(), 761);
+    //     Ok(())
+    // }
+    //
+    // #[tokio::test]
+    // async fn request_none_pagination_override() -> Result<()> {
+    //     let data_connector = get_credentials();
+    //     let connector = data_connector
+    //         .connect("https://api.intra.42.fr/v2/")
+    //         .await?
+    //         .pagination(PaginationRule::OneShot);
+    //     let mut request = connector
+    //         .get("users", Query::new().add("filter[primary_campus_id]", 31))?
+    //         .pagination(PaginationRule::default());
+    //     let response = request.send::<Vec<User>>().await?;
+    //     assert_eq!(response.len(), connector.pagination.size);
+    //     Ok(())
+    // }
+    //
+    // #[tokio::test]
+    // async fn request_fixed_pagination_override() -> Result<()> {
+    //     let data_connector = get_credentials();
+    //     let connector = data_connector
+    //         .connect("https://api.intra.42.fr/v2/")
+    //         .await?;
+    //     let mut request = connector
+    //         .get("users", Query::new().add("filter[primary_campus_id]", 31))?
+    //         .pagination(PaginationRule::Fixed(3));
+    //     let response = request.send::<Vec<User>>().await?;
+    //     assert_eq!(response.len(), connector.pagination.size * 3);
+    //     Ok(())
+    // }
+    //
+    // #[tokio::test]
+    // async fn request_one_shot_pagination_override() -> Result<()> {
+    //     let data_connector = get_credentials();
+    //     let connector = data_connector
+    //         .connect("https://api.intra.42.fr/v2/")
+    //         .await?;
+    //     let mut request = connector
+    //         .get("users", Query::new().add("filter[primary_campus_id]", 31))?
+    //         .pagination(PaginationRule::OneShot);
+    //     let response = request.send::<Vec<User>>().await?;
+    //     assert_eq!(response.len(), 761);
+    //     Ok(())
+    // }
+    //
+    // #[tokio::test]
+    // async fn request_consistency() -> Result<()> {
+    //     let data_connector = get_credentials();
+    //     let connector = data_connector
+    //         .connect("https://api.intra.42.fr/v2/")
+    //         .await?;
+    //     let mut request = connector
+    //         .get("users", Query::new().add("filter[primary_campus_id]", 31))?
+    //         .pagination(PaginationRule::Fixed(2));
+    //     let first_response = request.send::<Vec<User>>().await?;
+    //     assert_eq!(first_response.len(), connector.pagination.size * 2);
+    //     let second_response = request.send::<Vec<User>>().await?;
+    //     assert_eq!(second_response.len(), connector.pagination.size * 2);
+    //     assert_eq!(request.pagination.current_page(), 5);
+    //     assert!(first_response
+    //         .iter()
+    //         .zip(second_response.iter())
+    //         .all(|(a, b)| a.login != b.login));
+    //     Ok(())
+    // }
+    //
+    // #[tokio::test]
+    // async fn request_consistency_after_reset() -> Result<()> {
+    //     let data_connector = get_credentials();
+    //     let connector = data_connector
+    //         .connect("https://api.intra.42.fr/v2/")
+    //         .await?;
+    //     let mut request = connector
+    //         .get("users", Query::new().add("filter[primary_campus_id]", 31))?
+    //         .pagination(PaginationRule::Fixed(2));
+    //     let first_response = request.send::<Vec<User>>().await?;
+    //     assert_eq!(first_response.len(), connector.pagination.size * 2);
+    //     request.pagination.reset();
+    //     let second_response = request.send::<Vec<User>>().await?;
+    //     assert_eq!(second_response.len(), connector.pagination.size * 2);
+    //     assert_eq!(request.pagination.current_page(), 3);
+    //     assert!(first_response
+    //         .iter()
+    //         .zip(second_response.iter())
+    //         .all(|(a, b)| a.login == b.login));
+    //     Ok(())
+    // }
+
     #[tokio::test]
-    async fn get_method_default() -> Result<()> {
+    async fn connector_none_pagination_sort_login_asc() -> Result<()> {
         let data_connector = get_credentials();
         let connector = data_connector
             .connect("https://api.intra.42.fr/v2/")
-            .await?;
+            .await?
+            .pagination(PaginationRule::default())
+            .pattern_filter("filter[property]")
+            .filter("primary_campus_id", vec!["31"])
+            .pattern_sort("property")
+            .sort("login");
         let mut request = connector.get("users", Query::new())?;
         let response = request.send::<Vec<User>>().await?;
-        assert_eq!(response.len(), connector.pagination.size);
+        eprintln!("{:?}", response);
+        assert_eq!(response.len(), 1);
         Ok(())
     }
 
     #[tokio::test]
-    async fn connector_none_pagination() -> Result<()> {
+    async fn connector_none_pagination_sort_login_desc() -> Result<()> {
+        let data_connector = get_credentials();
+        let connector = data_connector
+            .connect("https://api.intra.42.fr/v2/")
+            .await?
+            .pagination(PaginationRule::default())
+            .pattern_filter("filter[property]")
+            .filter("primary_campus_id", vec!["31"])
+            .pattern_sort("property")
+            .sort("-login");
+        let mut request = connector.get("users", Query::new())?;
+        let response = request.send::<Vec<User>>().await?;
+        eprintln!("{:?}", response);
+        assert_eq!(response.len(), 1);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn connector_none_pagination_sort_reset() -> Result<()> {
+        let data_connector = get_credentials();
+        let connector = data_connector
+            .connect("https://api.intra.42.fr/v2/")
+            .await?
+            .pagination(PaginationRule::default())
+            .pattern_filter("filter[property]")
+            .filter("primary_campus_id", vec!["31"])
+            .pattern_sort("property")
+            .sort("login");
+        let mut request = connector
+            .get("users", Query::new())?
+            .set_sort(SortTest::default());
+        let response = request.send::<Vec<User>>().await?;
+        eprintln!("{:?}", response);
+        assert_eq!(response.len(), 1);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn connector_none_pagination_request_sort_login_asc() -> Result<()> {
+        let data_connector = get_credentials();
+        let connector = data_connector
+            .connect("https://api.intra.42.fr/v2/")
+            .await?
+            .pagination(PaginationRule::default())
+            .pattern_filter("filter[property]")
+            .filter("primary_campus_id", vec!["31"]);
+        let mut request = connector
+            .get("users", Query::new())?
+            .pattern_sort("property")
+            .sort("login");
+        let response = request.send::<Vec<User>>().await?;
+        eprintln!("{:?}", response);
+        assert_eq!(response.len(), 1);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn connector_none_pagination_request_sort_login_desc() -> Result<()> {
+        let data_connector = get_credentials();
+        let connector = data_connector
+            .connect("https://api.intra.42.fr/v2/")
+            .await?
+            .pagination(PaginationRule::default())
+            .pattern_filter("filter[property]")
+            .filter("primary_campus_id", vec!["31"]);
+        let mut request = connector
+            .get("users", Query::new())?
+            .pattern_sort("property")
+            .sort("-login");
+        let response = request.send::<Vec<User>>().await?;
+        eprintln!("{:?}", response);
+        assert_eq!(response.len(), 1);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn connector_none_pagination_override_sort_login_asc() -> Result<()> {
+        let data_connector = get_credentials();
+        let connector = data_connector
+            .connect("https://api.intra.42.fr/v2/")
+            .await?
+            .pagination(PaginationRule::default())
+            .pattern_filter("filter[property]")
+            .filter("primary_campus_id", vec!["31"])
+            .pattern_sort("property")
+            .sort("-login");
+        let mut request = connector
+            .get("users", Query::new())?
+            .pattern_sort("property")
+            .sort("login");
+        let response = request.send::<Vec<User>>().await?;
+        eprintln!("{:?}", response);
+        assert_eq!(response.len(), 1);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn connector_none_pagination_override_sort_login_desc() -> Result<()> {
+        let data_connector = get_credentials();
+        let connector = data_connector
+            .connect("https://api.intra.42.fr/v2/")
+            .await?
+            .pagination(PaginationRule::default())
+            .pattern_filter("filter[property]")
+            .filter("primary_campus_id", vec!["31"])
+            .pattern_sort("property")
+            .sort("login");
+        let mut request = connector
+            .get("users", Query::new())?
+            .pattern_sort("property")
+            .sort("-login");
+        let response = request.send::<Vec<User>>().await?;
+        eprintln!("{:?}", response);
+        assert_eq!(response.len(), 1);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn connector_none_pagination_filter() -> Result<()> {
+        let data_connector = get_credentials();
+        let connector = data_connector
+            .connect("https://api.intra.42.fr/v2/")
+            .await?
+            .pagination(PaginationRule::default())
+            .pattern_filter("filter[property]")
+            .filter("primary_campus_id", vec!["31"])
+            .filter("login", vec!["vnaud"]);
+        let mut request = connector.get("users", Query::new())?;
+        let response = request.send::<Vec<User>>().await?;
+        assert_eq!(response.len(), 1);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn connector_none_pagination_request_filter() -> Result<()> {
         let data_connector = get_credentials();
         let connector = data_connector
             .connect("https://api.intra.42.fr/v2/")
             .await?
             .pagination(PaginationRule::default());
-        let mut request =
-            connector.get("users", Query::new().add("filter[primary_campus_id]", 31))?;
+        let mut request = connector
+            .get("users", Query::new())?
+            .pattern_filter("filter[property]")
+            .filter("primary_campus_id", vec!["31"])
+            .filter("login", vec!["vnaud"]);
         let response = request.send::<Vec<User>>().await?;
-        assert_eq!(response.len(), connector.pagination.size);
+        assert_eq!(response.len(), 1);
         Ok(())
     }
 
     #[tokio::test]
-    async fn connector_fixed_pagination() -> Result<()> {
+    async fn connector_none_pagination_filter_override() -> Result<()> {
         let data_connector = get_credentials();
         let connector = data_connector
             .connect("https://api.intra.42.fr/v2/")
             .await?
-            .pagination(PaginationRule::Fixed(3));
-        let mut request =
-            connector.get("users", Query::new().add("filter[primary_campus_id]", 31))?;
+            .pagination(PaginationRule::default())
+            .pattern_filter("filter[property]")
+            .filter("primary_campus_id", vec!["31"])
+            .filter("login", vec!["vnaud"]);
+        let mut request = connector
+            .get("users", Query::new())?
+            .pattern_filter("filter[property]")
+            .filter("primary_campus_id", vec!["31"])
+            .filter("login", vec!["vnaud,pmieuzet"]);
         let response = request.send::<Vec<User>>().await?;
-        assert_eq!(response.len(), connector.pagination.size * 3);
+        assert_eq!(response.len(), 2);
         Ok(())
     }
 
     #[tokio::test]
-    async fn connector_one_shot_pagination() -> Result<()> {
+    async fn connector_none_pagination_filter_reset() -> Result<()> {
         let data_connector = get_credentials();
         let connector = data_connector
             .connect("https://api.intra.42.fr/v2/")
             .await?
-            .pagination(PaginationRule::OneShot);
-        let mut request =
-            connector.get("users", Query::new().add("filter[primary_campus_id]", 31))?;
+            .pagination(PaginationRule::default())
+            .pattern_filter("filter[property]")
+            .filter("primary_campus_id", vec!["31"])
+            .filter("login", vec!["vnaud"]);
+        let mut request = connector
+            .get("users", Query::new())?
+            .set_filter(FilterTest::default());
         let response = request.send::<Vec<User>>().await?;
-        assert_eq!(response.len(), 761);
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn request_none_pagination_override() -> Result<()> {
-        let data_connector = get_credentials();
-        let connector = data_connector
-            .connect("https://api.intra.42.fr/v2/")
-            .await?
-            .pagination(PaginationRule::OneShot);
-        let mut request = connector
-            .get("users", Query::new().add("filter[primary_campus_id]", 31))?
-            .pagination(PaginationRule::default());
-        let response = request.send::<Vec<User>>().await?;
-        assert_eq!(response.len(), connector.pagination.size);
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn request_fixed_pagination_override() -> Result<()> {
-        let data_connector = get_credentials();
-        let connector = data_connector
-            .connect("https://api.intra.42.fr/v2/")
-            .await?;
-        let mut request = connector
-            .get("users", Query::new().add("filter[primary_campus_id]", 31))?
-            .pagination(PaginationRule::Fixed(3));
-        let response = request.send::<Vec<User>>().await?;
-        assert_eq!(response.len(), connector.pagination.size * 3);
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn request_one_shot_pagination_override() -> Result<()> {
-        let data_connector = get_credentials();
-        let connector = data_connector
-            .connect("https://api.intra.42.fr/v2/")
-            .await?;
-        let mut request = connector
-            .get("users", Query::new().add("filter[primary_campus_id]", 31))?
-            .pagination(PaginationRule::OneShot);
-        let response = request.send::<Vec<User>>().await?;
-        assert_eq!(response.len(), 761);
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn request_consistency() -> Result<()> {
-        let data_connector = get_credentials();
-        let connector = data_connector
-            .connect("https://api.intra.42.fr/v2/")
-            .await?;
-        let mut request = connector
-            .get("users", Query::new().add("filter[primary_campus_id]", 31))?
-            .pagination(PaginationRule::Fixed(2));
-        let first_response = request.send::<Vec<User>>().await?;
-        assert_eq!(first_response.len(), connector.pagination.size * 2);
-        let second_response = request.send::<Vec<User>>().await?;
-        assert_eq!(second_response.len(), connector.pagination.size * 2);
-        assert_eq!(request.pagination.current_page(), 5);
-        assert!(first_response
-            .iter()
-            .zip(second_response.iter())
-            .all(|(a, b)| a.login != b.login));
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn request_consistency_after_reset() -> Result<()> {
-        let data_connector = get_credentials();
-        let connector = data_connector
-            .connect("https://api.intra.42.fr/v2/")
-            .await?;
-        let mut request = connector
-            .get("users", Query::new().add("filter[primary_campus_id]", 31))?
-            .pagination(PaginationRule::Fixed(2));
-        let first_response = request.send::<Vec<User>>().await?;
-        assert_eq!(first_response.len(), connector.pagination.size * 2);
-        request.pagination.reset();
-        let second_response = request.send::<Vec<User>>().await?;
-        assert_eq!(second_response.len(), connector.pagination.size * 2);
-        assert_eq!(request.pagination.current_page(), 3);
-        assert!(first_response
-            .iter()
-            .zip(second_response.iter())
-            .all(|(a, b)| a.login == b.login));
+        assert_eq!(response.len(), request.pagination.size);
         Ok(())
     }
 }

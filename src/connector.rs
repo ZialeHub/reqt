@@ -102,6 +102,47 @@ impl<P: Pagination, F: Filter, S: Sort> Api<P, F, S> {
     pub fn token(&self) -> String {
         self.authorization.to_string()
     }
+
+    pub fn pattern_filter(mut self, pattern: impl ToString) -> Self {
+        self.filter = self.filter.pattern(pattern);
+        self
+    }
+
+    pub fn filter<T: IntoIterator>(mut self, property: impl ToString, value: T) -> Self
+    where
+        T::Item: ToString,
+    {
+        self.filter = self.filter.filter(property, value);
+        self
+    }
+
+    pub fn filter_with<T: IntoIterator>(
+        mut self,
+        property: impl ToString,
+        filter: impl ToString,
+        value: T,
+    ) -> Self
+    where
+        T::Item: ToString,
+    {
+        self.filter = self.filter.filter_with(property, filter, value);
+        self
+    }
+
+    pub fn pattern_sort(mut self, pattern: impl ToString) -> Self {
+        self.sort = self.sort.pattern(pattern);
+        self
+    }
+
+    pub fn sort(mut self, property: impl ToString) -> Self {
+        self.sort = self.sort.sort(property);
+        self
+    }
+
+    pub fn sort_with(mut self, property: impl ToString, order: crate::sort::SortOrder) -> Self {
+        self.sort = self.sort.sort_with(property, order);
+        self
+    }
 }
 
 impl<P: Pagination, F: Filter, S: Sort> Connector<P, F, S> for Api<P, F, S> {
@@ -117,8 +158,8 @@ impl<P: Pagination, F: Filter, S: Sort> Connector<P, F, S> for Api<P, F, S> {
 
         let request = Request::<(), P, F, S>::new(url.method.clone(), url, Some(headers), None)
             .pagination(self.pagination.get_pagination().clone())
-            .filter(self.filter.clone())
-            .sort(self.sort.clone());
+            .set_filter(self.filter.clone())
+            .set_sort(self.sort.clone());
 
         Ok(request)
     }
@@ -145,8 +186,8 @@ impl<P: Pagination, F: Filter, S: Sort> Connector<P, F, S> for Api<P, F, S> {
 
         let request = Request::<B, P, F, S>::new(url.method.clone(), url, Some(headers), body)
             .pagination(self.pagination.get_pagination().clone())
-            .filter(self.filter.clone())
-            .sort(self.sort.clone());
+            .set_filter(self.filter.clone())
+            .set_sort(self.sort.clone());
 
         Ok(request)
     }
@@ -173,8 +214,8 @@ impl<P: Pagination, F: Filter, S: Sort> Connector<P, F, S> for Api<P, F, S> {
 
         let request = Request::<B, P, F, S>::new(url.method.clone(), url, Some(headers), body)
             .pagination(self.pagination.get_pagination().clone())
-            .filter(self.filter.clone())
-            .sort(self.sort.clone());
+            .set_filter(self.filter.clone())
+            .set_sort(self.sort.clone());
 
         Ok(request)
     }
@@ -201,8 +242,8 @@ impl<P: Pagination, F: Filter, S: Sort> Connector<P, F, S> for Api<P, F, S> {
 
         let request = Request::<B, P, F, S>::new(url.method.clone(), url, Some(headers), body)
             .pagination(self.pagination.get_pagination().clone())
-            .filter(self.filter.clone())
-            .sort(self.sort.clone());
+            .set_filter(self.filter.clone())
+            .set_sort(self.sort.clone());
 
         Ok(request)
     }
@@ -219,8 +260,8 @@ impl<P: Pagination, F: Filter, S: Sort> Connector<P, F, S> for Api<P, F, S> {
 
         let request = Request::<(), P, F, S>::new(url.method.clone(), url, Some(headers), None)
             .pagination(self.pagination.get_pagination().clone())
-            .filter(self.filter.clone())
-            .sort(self.sort.clone());
+            .set_filter(self.filter.clone())
+            .set_sort(self.sort.clone());
 
         Ok(request)
     }
