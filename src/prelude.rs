@@ -1,4 +1,4 @@
-pub use crate::connector::{Api, Authentication, Authorization, Connector};
+pub use crate::connector::{Api, Authorization, AuthorizationType, Connector};
 pub use crate::connector_builder::ApiBuilder;
 pub use crate::error::{ApiError, ConnectorError, ErrorContext, Result};
 pub use crate::pagination::{Pagination, PaginationRule, RequestPagination};

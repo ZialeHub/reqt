@@ -6,6 +6,7 @@ mod tests_api42_v2 {
     use serde::{Deserialize, Serialize};
 
     use crate::prelude::*;
+    use proc_macro_authorization::Oauth2;
 
     fn get_credentials() -> TestApiConnector {
         let connector: TestApiConnector = toml::from_str::<Env>(include_str!("../.env"))
@@ -19,7 +20,7 @@ mod tests_api42_v2 {
         pub access_token: String,
     }
 
-    #[derive(Debug, Clone, Deserialize)]
+    #[derive(Debug, Clone, Deserialize, Oauth2)]
     struct TestApiConnector {
         uid: String,
         secret: String,
@@ -30,50 +31,6 @@ mod tests_api42_v2 {
     #[derive(Debug, Clone, Deserialize)]
     struct Env {
         intra_v2: TestApiConnector,
-    }
-
-    impl Authentication for TestApiConnector {
-        async fn connect(&self, url: &str) -> Result<Api<RequestPagination>> {
-            let pagination = RequestPagination::default();
-            let connector = ApiBuilder::new(url, pagination);
-            let client = Client::new();
-
-            let scopes = self
-                .scopes
-                .iter()
-                .fold(String::new(), |acc, scope| format!("{} {}", acc, scope));
-            let mut params = HashMap::new();
-            params.insert("grant_type", "client_credentials");
-            params.insert("client_id", &self.uid);
-            params.insert("client_secret", &self.secret);
-            params.insert("scope", &scopes);
-            match client
-                .post(&self.auth_endpoint)
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .form(&params)
-                .send()
-                .await
-            {
-                Ok(response) => {
-                    match response.status() {
-                        StatusCode::OK
-                        | StatusCode::CREATED
-                        | StatusCode::ACCEPTED
-                        | StatusCode::NO_CONTENT => {}
-                        status => return Err(status.into()),
-                    }
-                    match response.text().await {
-                        Ok(response_text) => {
-                            let token: TokenResponse =
-                                serde_json::from_str(&response_text).unwrap();
-                            Ok(connector.bearer(token.access_token).build())
-                        }
-                        Err(e) => Err(ApiError::ResponseToText(e)),
-                    }
-                }
-                Err(e) => Err(ApiError::ReqwestExecute(e)),
-            }
-        }
     }
 
     #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -226,19 +183,13 @@ mod tests_api42_v2 {
 mod tests_rest_country {
     use serde::{Deserialize, Serialize};
 
-    use crate::prelude::{
-        Api, ApiBuilder, Authentication, Connector, Query, RequestPagination, Result,
-    };
+    use crate::prelude::{Authorization, Connector, Query, Result};
 
+    #[derive(proc_macro_authorization::Authorization)]
     struct CountryConnector {}
     impl CountryConnector {
         pub fn new() -> Self {
             Self {}
-        }
-    }
-    impl Authentication for CountryConnector {
-        async fn connect(&self, url: &str) -> Result<Api<RequestPagination>> {
-            Ok(ApiBuilder::new(url, RequestPagination::default()).build())
         }
     }
 
@@ -323,7 +274,7 @@ mod tests_api42_v3 {
         intra_v3: TestApiConnectorV3,
     }
 
-    impl Authentication for TestApiConnectorV3 {
+    impl Authorization for TestApiConnectorV3 {
         async fn connect(&self, url: &str) -> Result<Api<RequestPagination>> {
             let pagination = RequestPagination::default();
             let connector = ApiBuilder::new(url, pagination);

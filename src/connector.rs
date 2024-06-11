@@ -6,6 +6,7 @@ use serde::Serialize;
 use crate::{
     error::Result,
     pagination::{Pagination, PaginationRule, RequestPagination},
+    prelude::ApiBuilder,
     query::Query,
     request::Request,
     request_url::RequestUrl,
@@ -13,7 +14,7 @@ use crate::{
 
 /// Authorization type to be used in the API
 #[derive(Debug, Clone, Default, PartialEq)]
-pub enum Authorization {
+pub enum AuthorizationType {
     #[default]
     None,
     // `username:password` into request headers
@@ -33,14 +34,14 @@ pub enum Authorization {
     OAuth2(String),
 }
 
-impl Authorization {
+impl AuthorizationType {
     /// Set the Authorization header value for the request
     ///
     /// # Arguments
     /// * `headers` - A mutable reference to the request headers
     pub fn header_value(&self, headers: &mut HeaderMap) -> Result<()> {
         match self {
-            Authorization::None => {}
+            AuthorizationType::None => {}
             _ => {
                 headers.insert(
                     reqwest::header::AUTHORIZATION,
@@ -53,12 +54,12 @@ impl Authorization {
     }
 }
 
-impl Display for Authorization {
+impl Display for AuthorizationType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Authorization::Basic(token) => write!(f, "Basic {}", token),
-            Authorization::ApiKey(token) => write!(f, "ApiKey {}", token),
-            Authorization::Bearer(token) | Authorization::OAuth2(token) => {
+            AuthorizationType::Basic(token) => write!(f, "Basic {}", token),
+            AuthorizationType::ApiKey(token) => write!(f, "ApiKey {}", token),
+            AuthorizationType::Bearer(token) | AuthorizationType::OAuth2(token) => {
                 write!(f, "Bearer {}", token)
             }
             _ => panic!("TokenType::None is not allowed"),
@@ -77,7 +78,7 @@ impl Display for Authorization {
 /// * pagination - Pagination type to be used in the request
 #[derive(Debug, Clone)]
 pub struct Api<T: Pagination = RequestPagination> {
-    pub(crate) authorization: Authorization,
+    pub(crate) authorization: AuthorizationType,
     pub(crate) endpoint: String,
     pub(crate) pagination: T,
 }
@@ -237,8 +238,10 @@ impl<T: Pagination> Connector<T> for Api<T> {
 
 /// Trait to implement on your connector structure
 /// to allow the use of the `connect` method
-pub trait Authentication<T: Pagination = RequestPagination> {
-    fn connect(&self, url: &str) -> impl Future<Output = Result<Api<T>>> + Send;
+pub trait Authorization<T: Pagination + Default + Send = RequestPagination> {
+    fn connect(&self, url: &str) -> impl Future<Output = Result<Api<T>>> + Send {
+        async move { Ok(ApiBuilder::new(url, T::default()).build()) }
+    }
 }
 
 /// Trait to implement on your connector structure

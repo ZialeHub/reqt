@@ -55,8 +55,7 @@ impl<P: Serialize + Clone, U: Pagination> Request<P, U> {
     {
         let request = self.build_reqwest::<P>(self.payload.clone())?;
         let first_response = Self::execute_reqwest(&request).await?;
-        let parsed_response = self.parse_response_array(request, first_response).await;
-        parsed_response
+        self.parse_response_array(request, first_response).await
     }
 
     fn build_reqwest<T>(&self, payload: Option<T>) -> Result<reqwest::Request>
@@ -108,7 +107,7 @@ impl<P: Serialize + Clone, U: Pagination> Request<P, U> {
         let mut response = client
             .execute(request.try_clone().ok_or(ApiError::ReqwestClone)?)
             .await
-            .map_err(|e| ApiError::ReqwestExecute(e))?;
+            .map_err(ApiError::ReqwestExecute)?;
 
         let remaining_secondly_calls = response
             .headers()
@@ -126,7 +125,7 @@ impl<P: Serialize + Clone, U: Pagination> Request<P, U> {
             response = client
                 .execute(request.try_clone().ok_or(ApiError::ReqwestClone)?)
                 .await
-                .map_err(|e| ApiError::ReqwestExecute(e))?;
+                .map_err(ApiError::ReqwestExecute)?;
         }
 
         match response.status() {
@@ -169,7 +168,7 @@ impl<P: Serialize + Clone, U: Pagination> Request<P, U> {
             Ok(text) => text,
             Err(e) => return Err(ApiError::ResponseToText(e)),
         };
-        serde_json::from_slice::<T>(text.as_bytes()).map_err(|e| ApiError::ResponseParse(e))
+        serde_json::from_slice::<T>(text.as_bytes()).map_err(ApiError::ResponseParse)
     }
 
     async fn parse_response_array<T>(
@@ -202,7 +201,7 @@ impl<P: Serialize + Clone, U: Pagination> Request<P, U> {
             }
             self.pagination.next();
         }
-        serde_json::from_value::<T>(json_values).map_err(|e| ApiError::ResponseParse(e))
+        serde_json::from_value::<T>(json_values).map_err(ApiError::ResponseParse)
     }
 
     /// Pagination setter to override the Api pagination
