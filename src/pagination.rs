@@ -1,5 +1,5 @@
 use crate::query::Query;
-use proc_macro_api_manager::Pagination;
+use pagination_derive::Pagination;
 
 /// Pagination rule to be used in the API
 ///

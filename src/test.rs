@@ -6,7 +6,7 @@ mod tests_api42_v2 {
     use serde::{Deserialize, Serialize};
 
     use crate::{prelude::*, sort::SortOrder};
-    use proc_macro_api_manager::Oauth2;
+    use authorization_derive::Oauth2;
 
     fn get_credentials() -> TestApiConnector {
         let connector: TestApiConnector = toml::from_str::<Env>(include_str!("../.env"))

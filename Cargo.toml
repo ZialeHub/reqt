@@ -1,4 +1,4 @@
-workspace = { members = ["proc-macro-api-manager"] }
+workspace = { members = [ "authorization-derive", "filter-derive", "pagination-derive", "sort-derive"] }
 [package]
 name = "api_manager"
 version = "0.1.0"
@@ -14,7 +14,10 @@ serde_json = "1.0.117"
 thiserror = "1.0.61"
 url = "2.5.0"
 base64 = "0.22.1"
-proc-macro-api-manager = { path = "./proc-macro-api-manager" }
+authorization-derive = { path = "./authorization-derive" }
+pagination-derive= { path = "./pagination-derive" }
+filter-derive= { path = "./filter-derive" }
+sort-derive= { path = "./sort-derive" }
 
 [dev-dependencies]
 toml = "0.8.14"

@@ -1,4 +1,4 @@
-use proc_macro_api_manager::Filter;
+use filter_derive::Filter;
 
 use crate::query::Query;
 

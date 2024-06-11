@@ -1,0 +1,48 @@
+extern crate proc_macro;
+
+use proc_macro::TokenStream;
+use quote::quote;
+
+#[proc_macro_derive(Pagination)]
+pub fn pagination_derive(input: TokenStream) -> TokenStream {
+    let ast = syn::parse(input).unwrap();
+    impl_pagination_derive(&ast)
+}
+
+fn impl_pagination_derive(ast: &syn::DeriveInput) -> TokenStream {
+    let name = &ast.ident;
+    let gen = quote! {
+        impl Pagination for #name {
+            fn size(mut self, size: usize) -> Self {
+                self.size = size;
+                self
+            }
+            fn reset(&mut self) {
+                self.current_page = 1;
+            }
+            fn pagination(mut self, rule: PaginationRule) -> Self {
+                self.pagination = rule;
+                self
+            }
+            fn get_pagination(&self) -> &PaginationRule {
+                &self.pagination
+            }
+            fn current_page(&self) -> usize {
+                self.current_page
+            }
+            fn get_current_page(&self) -> Query {
+                Query::new()
+            }
+            fn get_size(&self) -> Query {
+                Query::new()
+            }
+            fn next(&mut self) {
+                self.current_page += 1;
+            }
+            fn get_next_page(&mut self) -> Query {
+                Query::new()
+            }
+        }
+    };
+    gen.into()
+}

@@ -1,4 +1,4 @@
-use proc_macro_api_manager::Sort;
+use sort_derive::Sort;
 
 use crate::query::Query;
 
