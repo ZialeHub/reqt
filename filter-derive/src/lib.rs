@@ -19,16 +19,6 @@ fn impl_filter_derive(ast: &syn::DeriveInput) -> TokenStream {
             where
                 T::Item: ToString,
             {
-                let mut filter = self.pattern.clone();
-                let mut values = String::new();
-                filter = filter.replace("property", &property.to_string());
-
-                for v in value.into_iter() {
-                    values.push_str(&v.to_string());
-                    values.push(',');
-                }
-                values.pop();
-                self.filters.push((filter, values));
                 self
             }
 
@@ -36,26 +26,10 @@ fn impl_filter_derive(ast: &syn::DeriveInput) -> TokenStream {
             where
                 T::Item: ToString,
             {
-                let mut filters = self.pattern.clone();
-                let mut values = String::new();
-                filters = filters.replace("property", &property.to_string());
-                filters = filters.replace("filter", &filter.to_string());
-
-                for v in value.into_iter() {
-                    values.push_str(&v.to_string());
-                    values.push(',');
-                }
-                values.pop();
-                self.filters.push((filters, values));
                 self
             }
 
-            fn to_query(&self) -> Query {
-                Query::new()
-            }
-
             fn pattern(mut self, pattern: impl ToString) -> Self {
-                self.pattern = pattern.to_string();
                 self
             }
         }

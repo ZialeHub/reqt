@@ -57,13 +57,16 @@ impl RequestUrl {
         filter: &F,
         sort: &S,
         range: &R,
-    ) -> Result<Url> {
+    ) -> Result<Url>
+    where
+        Query: for<'a> From<&'a F> + for<'a> From<&'a S> + for<'a> From<&'a R>,
+    {
         let mut query = self.query.clone();
 
         query = query.join(pagination.get_current_page());
-        query = query.join(filter.to_query());
-        query = query.join(sort.to_query());
-        query = query.join(range.to_query());
+        query = query.join(filter.into());
+        query = query.join(sort.into());
+        query = query.join(range.into());
 
         Url::parse(&format!("{}{}{}", self.endpoint, self.route, query))
             .map_err(ApiError::WrongUrlFormat)

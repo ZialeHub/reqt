@@ -17,15 +17,20 @@ impl std::fmt::Display for SortOrder {
     }
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Sort)]
+#[derive(Debug, Clone, Default, Sort)]
 pub struct SortRule {
     pub pattern: String,
     pub sorts: Vec<String>,
 }
+impl From<&SortRule> for Query {
+    fn from(_value: &SortRule) -> Self {
+        Query::new()
+    }
+}
 
 pub trait Sort: Default + Clone
 where
-    Self: Sized,
+    Self: Sized + 'static,
 {
     /// Set the pattern to match the sort
     /// The pattern must contains the words "property" and can contains "order"
@@ -44,8 +49,4 @@ where
     /// Add a sort with order on a property to the list
     /// You should implement this method to override the property if already exists
     fn sort_with(self, property: impl ToString, order: SortOrder) -> Self;
-
-    /// Convert the sort to a query
-    /// The query will be joined with the values separated by '&'
-    fn to_query(&self) -> Query;
 }

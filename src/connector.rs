@@ -91,7 +91,9 @@ pub struct Api<
     F: Filter = FilterRule,
     S: Sort = SortRule,
     R: Range = RangeRule,
-> {
+> where
+    Query: for<'a> From<&'a F> + for<'a> From<&'a S> + for<'a> From<&'a R>,
+{
     pub(crate) authorization: AuthorizationType,
     pub(crate) endpoint: String,
     pub(crate) pagination: P,
@@ -100,7 +102,10 @@ pub struct Api<
     pub(crate) range: R,
 }
 
-impl<P: Pagination, F: Filter, S: Sort, R: Range> Api<P, F, S, R> {
+impl<P: Pagination, F: Filter, S: Sort, R: Range> Api<P, F, S, R>
+where
+    Query: for<'a> From<&'a F> + for<'a> From<&'a S> + for<'a> From<&'a R>,
+{
     pub fn pagination(mut self, pagination: PaginationRule) -> Self {
         self.pagination = self.pagination.pagination(pagination);
         self
@@ -167,7 +172,10 @@ impl<P: Pagination, F: Filter, S: Sort, R: Range> Api<P, F, S, R> {
     }
 }
 
-impl<P: Pagination, F: Filter, S: Sort, R: Range> Connector<P, F, S, R> for Api<P, F, S, R> {
+impl<P: Pagination, F: Filter, S: Sort, R: Range> Connector<P, F, S, R> for Api<P, F, S, R>
+where
+    Query: for<'a> From<&'a F> + for<'a> From<&'a S> + for<'a> From<&'a R>,
+{
     fn get(&self, route: impl ToString, query: Query) -> Result<Request<(), P, F, S, R>> {
         let mut headers = HeaderMap::new();
 
@@ -301,7 +309,8 @@ pub trait Authorization<
     F: Filter + Send = FilterRule,
     S: Sort + Send = SortRule,
     R: Range + Send = RangeRule,
->
+> where
+    Query: for<'a> From<&'a F> + for<'a> From<&'a S> + for<'a> From<&'a R>,
 {
     fn connect(&self, url: &str) -> impl Future<Output = Result<Api<P, F, S, R>>> + Send {
         async move { Ok(ApiBuilder::new(url).build()) }
@@ -310,7 +319,10 @@ pub trait Authorization<
 
 /// Trait to implement on your connector structure
 /// to allow the use of the `get`, `post`, `put`, `patch`, and `delete` methods
-pub trait Connector<P: Pagination, F: Filter, S: Sort, R: Range> {
+pub trait Connector<P: Pagination, F: Filter, S: Sort, R: Range>
+where
+    Query: for<'a> From<&'a F> + for<'a> From<&'a S> + for<'a> From<&'a R>,
+{
     fn get(&self, route: impl ToString, query: Query) -> Result<Request<(), P, F, S, R>>;
     fn post<B: Serialize + Clone>(
         &self,

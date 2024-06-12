@@ -4,6 +4,7 @@ mod tests_api42_v2 {
 
     use reqwest::{Client, StatusCode};
     use serde::{Deserialize, Serialize};
+    use serial_test::serial;
 
     use crate::{prelude::*, range::Range, sort::SortOrder};
     use authorization_derive::Oauth2;
@@ -47,6 +48,16 @@ mod tests_api42_v2 {
         pub pattern: String,
         pub ranges: Vec<(String, String)>,
     }
+    impl From<&RangeTest> for Query {
+        fn from(value: &RangeTest) -> Self {
+            let mut query = Query::new();
+            for (range, values) in value.ranges.iter() {
+                eprintln!("{}, {}", range, values);
+                query = query.add(range, values);
+            }
+            query
+        }
+    }
     impl Range for RangeTest {
         fn pattern(mut self, pattern: impl ToString) -> Self {
             self.pattern = pattern.to_string();
@@ -69,21 +80,27 @@ mod tests_api42_v2 {
             self.ranges.push((range, values));
             self
         }
-
-        fn to_query(&self) -> Query {
-            let mut query = Query::new();
-            for (range, values) in self.ranges.iter() {
-                eprintln!("{}, {}", range, values);
-                query = query.add(range, values);
-            }
-            query
-        }
     }
 
     #[derive(Debug, Clone, Default)]
     struct SortTest {
         pub pattern: String,
         pub sorts: Vec<String>,
+    }
+    impl From<&SortTest> for Query {
+        fn from(value: &SortTest) -> Self {
+            let mut query = Query::new();
+            let mut sorts = String::new();
+            for sort in value.sorts.iter() {
+                sorts.push_str(sort);
+                sorts.push(',');
+            }
+            sorts.pop();
+            if !sorts.is_empty() {
+                query = query.add("sort", sorts);
+            }
+            query
+        }
     }
     impl Sort for SortTest {
         fn sort(mut self, property: impl ToString) -> Self {
@@ -117,20 +134,6 @@ mod tests_api42_v2 {
             self
         }
 
-        fn to_query(&self) -> Query {
-            let mut query = Query::new();
-            let mut sorts = String::new();
-            for sort in self.sorts.iter() {
-                sorts.push_str(sort);
-                sorts.push(',');
-            }
-            sorts.pop();
-            if !sorts.is_empty() {
-                query = query.add("sort", sorts);
-            }
-            query
-        }
-
         fn pattern(mut self, pattern: impl ToString) -> Self {
             self.pattern = pattern.to_string();
             self
@@ -141,6 +144,15 @@ mod tests_api42_v2 {
     struct FilterTest {
         pub pattern: String,
         pub filters: Vec<(String, String)>,
+    }
+    impl From<&FilterTest> for Query {
+        fn from(value: &FilterTest) -> Self {
+            let mut query = Query::new();
+            for (filter, values) in value.filters.iter() {
+                query = query.add(filter, values);
+            }
+            query
+        }
     }
     impl Filter for FilterTest {
         fn filter<T: IntoIterator>(mut self, property: impl ToString, value: T) -> Self
@@ -189,14 +201,6 @@ mod tests_api42_v2 {
             }
             self.filters.push((filters, values));
             self
-        }
-
-        fn to_query(&self) -> Query {
-            let mut query = Query::new();
-            for (filter, values) in self.filters.iter() {
-                query = query.add(filter, values);
-            }
-            query
         }
 
         fn pattern(mut self, pattern: impl ToString) -> Self {
@@ -266,6 +270,7 @@ mod tests_api42_v2 {
     }
 
     #[tokio::test]
+    #[serial(pagination)]
     async fn get_method_default() -> Result<()> {
         let data_connector = get_credentials();
         let connector = data_connector
@@ -278,6 +283,7 @@ mod tests_api42_v2 {
     }
 
     #[tokio::test]
+    #[serial(pagination)]
     async fn connector_none_pagination() -> Result<()> {
         let data_connector = get_credentials();
         let connector = data_connector
@@ -292,6 +298,7 @@ mod tests_api42_v2 {
     }
 
     #[tokio::test]
+    #[serial(pagination)]
     async fn connector_fixed_pagination() -> Result<()> {
         let data_connector = get_credentials();
         let connector = data_connector
@@ -306,6 +313,7 @@ mod tests_api42_v2 {
     }
 
     #[tokio::test]
+    #[serial(pagination)]
     async fn connector_one_shot_pagination() -> Result<()> {
         let data_connector = get_credentials();
         let connector = data_connector
@@ -320,6 +328,7 @@ mod tests_api42_v2 {
     }
 
     #[tokio::test]
+    #[serial(pagination)]
     async fn request_none_pagination_override() -> Result<()> {
         let data_connector = get_credentials();
         let connector = data_connector
@@ -335,6 +344,7 @@ mod tests_api42_v2 {
     }
 
     #[tokio::test]
+    #[serial(pagination)]
     async fn request_fixed_pagination_override() -> Result<()> {
         let data_connector = get_credentials();
         let connector = data_connector
@@ -349,6 +359,7 @@ mod tests_api42_v2 {
     }
 
     #[tokio::test]
+    #[serial(pagination)]
     async fn request_one_shot_pagination_override() -> Result<()> {
         let data_connector = get_credentials();
         let connector = data_connector
@@ -363,6 +374,7 @@ mod tests_api42_v2 {
     }
 
     #[tokio::test]
+    #[serial(pagination)]
     async fn request_consistency() -> Result<()> {
         let data_connector = get_credentials();
         let connector = data_connector
@@ -384,6 +396,7 @@ mod tests_api42_v2 {
     }
 
     #[tokio::test]
+    #[serial(pagination)]
     async fn request_consistency_after_reset() -> Result<()> {
         let data_connector = get_credentials();
         let connector = data_connector
@@ -406,6 +419,7 @@ mod tests_api42_v2 {
     }
 
     #[tokio::test]
+    #[serial(sort)]
     async fn connector_none_pagination_sort_login_asc() -> Result<()> {
         let data_connector = get_credentials();
         let connector = data_connector
@@ -427,6 +441,7 @@ mod tests_api42_v2 {
     }
 
     #[tokio::test]
+    #[serial(sort)]
     async fn connector_none_pagination_sort_login_desc() -> Result<()> {
         let data_connector = get_credentials();
         let connector = data_connector
@@ -448,6 +463,7 @@ mod tests_api42_v2 {
     }
 
     #[tokio::test]
+    #[serial(sort)]
     async fn connector_none_pagination_sort_reset() -> Result<()> {
         let data_connector = get_credentials();
         let connector = data_connector
@@ -478,6 +494,7 @@ mod tests_api42_v2 {
     }
 
     #[tokio::test]
+    #[serial(sort)]
     async fn connector_none_pagination_request_sort_login_asc() -> Result<()> {
         let data_connector = get_credentials();
         let connector = data_connector
@@ -500,6 +517,7 @@ mod tests_api42_v2 {
     }
 
     #[tokio::test]
+    #[serial(sort)]
     async fn connector_none_pagination_request_sort_login_desc() -> Result<()> {
         let data_connector = get_credentials();
         let connector = data_connector
@@ -522,6 +540,7 @@ mod tests_api42_v2 {
     }
 
     #[tokio::test]
+    #[serial(sort)]
     async fn connector_none_pagination_override_sort_login_asc() -> Result<()> {
         let data_connector = get_credentials();
         let connector = data_connector
@@ -546,6 +565,7 @@ mod tests_api42_v2 {
     }
 
     #[tokio::test]
+    #[serial(sort)]
     async fn connector_none_pagination_override_sort_login_desc() -> Result<()> {
         let data_connector = get_credentials();
         let connector = data_connector
@@ -570,6 +590,7 @@ mod tests_api42_v2 {
     }
 
     #[tokio::test]
+    #[serial(filter)]
     async fn connector_none_pagination_filter() -> Result<()> {
         let data_connector = get_credentials();
         let connector = data_connector
@@ -586,6 +607,7 @@ mod tests_api42_v2 {
     }
 
     #[tokio::test]
+    #[serial(filter)]
     async fn connector_none_pagination_request_filter() -> Result<()> {
         let data_connector = get_credentials();
         let connector = data_connector
@@ -603,6 +625,7 @@ mod tests_api42_v2 {
     }
 
     #[tokio::test]
+    #[serial(filter)]
     async fn connector_none_pagination_filter_override() -> Result<()> {
         let data_connector = get_credentials();
         let connector = data_connector
@@ -623,6 +646,7 @@ mod tests_api42_v2 {
     }
 
     #[tokio::test]
+    #[serial(filter)]
     async fn connector_none_pagination_filter_reset() -> Result<()> {
         let data_connector = get_credentials();
         let connector = data_connector
@@ -641,6 +665,7 @@ mod tests_api42_v2 {
     }
 
     #[tokio::test]
+    #[serial(range)]
     async fn connector_none_pagination_range() -> Result<()> {
         let data_connector = get_credentials();
         let connector = data_connector
@@ -656,6 +681,7 @@ mod tests_api42_v2 {
     }
 
     #[tokio::test]
+    #[serial(range)]
     async fn connector_none_pagination_request_range() -> Result<()> {
         let data_connector = get_credentials();
         let connector = data_connector
@@ -672,6 +698,7 @@ mod tests_api42_v2 {
     }
 
     #[tokio::test]
+    #[serial(range)]
     async fn connector_none_pagination_range_override() -> Result<()> {
         let data_connector = get_credentials();
         let connector = data_connector
@@ -689,6 +716,7 @@ mod tests_api42_v2 {
     }
 
     #[tokio::test]
+    #[serial(range)]
     async fn connector_none_pagination_range_reset() -> Result<()> {
         let data_connector = get_credentials();
         let connector = data_connector
@@ -710,6 +738,7 @@ mod tests_api42_v2 {
 mod tests_rest_country {
     use authorization_derive::Authorization;
     use serde::{Deserialize, Serialize};
+    use serial_test::serial;
 
     use crate::prelude::*;
 
@@ -738,6 +767,7 @@ mod tests_rest_country {
     }
 
     #[tokio::test]
+    #[serial(country)]
     async fn get_france() -> Result<()> {
         let connector = CountryConnector::new()
             .connect("https://restcountries.com/v3.1/")
@@ -749,6 +779,7 @@ mod tests_rest_country {
     }
 
     #[tokio::test]
+    #[serial(country)]
     async fn get_all() -> Result<()> {
         let connector = CountryConnector::new()
             .connect("https://restcountries.com/v3.1/")
@@ -767,6 +798,7 @@ mod tests_api42_v3 {
     use base64::{engine::general_purpose, Engine as _};
     use reqwest::{Client, StatusCode};
     use serde::{Deserialize, Serialize};
+    use serial_test::serial;
 
     use crate::prelude::*;
 
@@ -855,6 +887,7 @@ mod tests_api42_v3 {
     }
 
     #[tokio::test]
+    #[serial(api42v3)]
     async fn get_method_default() -> Result<()> {
         let data_connector = get_credentials();
         let connector = data_connector

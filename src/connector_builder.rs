@@ -2,6 +2,7 @@ use crate::{
     connector::{Api, AuthorizationType},
     filter::{Filter, FilterRule},
     pagination::{Pagination, PaginationRule, RequestPagination},
+    prelude::Query,
     range::{Range, RangeRule},
     sort::{Sort, SortRule},
 };
@@ -12,7 +13,9 @@ pub struct ApiBuilder<
     F: Filter = FilterRule,
     S: Sort = SortRule,
     R: Range = RangeRule,
-> {
+> where
+    Query: for<'a> From<&'a F> + for<'a> From<&'a S> + for<'a> From<&'a R>,
+{
     pub(crate) authorization: AuthorizationType,
     pub(crate) endpoint: String,
     pub(crate) pagination: P,
@@ -21,7 +24,10 @@ pub struct ApiBuilder<
     pub(crate) range: R,
 }
 
-impl<P: Pagination, F: Filter, S: Sort, R: Range> ApiBuilder<P, F, S, R> {
+impl<P: Pagination, F: Filter, S: Sort, R: Range> ApiBuilder<P, F, S, R>
+where
+    Query: for<'a> From<&'a F> + for<'a> From<&'a S> + for<'a> From<&'a R>,
+{
     pub fn new(endpoint: impl ToString) -> Self {
         Self {
             authorization: AuthorizationType::None,

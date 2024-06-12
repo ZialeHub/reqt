@@ -16,18 +16,11 @@ fn impl_range_derive(ast: &syn::DeriveInput) -> TokenStream {
     let gen = quote! {
         impl Range for #name {
             fn pattern(mut self, pattern: impl ToString) -> Self {
-                self.pattern = pattern.to_string();
                 self
             }
+
             fn range(mut self, property: impl ToString, min: impl ToString, max: impl ToString) -> Self {
-                let mut range = self.pattern.clone();
-                range = range.replace("property", &property.to_string());
-                let values = format!("{},{}", min.to_string(), max.to_string());
-                self.ranges.push((range, values));
                 self
-            }
-            fn to_query(&self) -> Query {
-                Query::new()
             }
         }
     };

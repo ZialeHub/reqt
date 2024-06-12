@@ -4,7 +4,7 @@ use serde::Serialize;
 use crate::{
     filter::{Filter, FilterRule},
     pagination::{Pagination, RequestPagination},
-    prelude::PaginationRule,
+    prelude::{PaginationRule, Query},
     range::{Range, RangeRule},
     request::Request,
     request_url::RequestUrl,
@@ -19,7 +19,9 @@ pub struct RequestBuilder<
     F: Filter = FilterRule,
     S: Sort = SortRule,
     R: Range = RangeRule,
-> {
+> where
+    Query: for<'a> From<&'a F> + for<'a> From<&'a S> + for<'a> From<&'a R>,
+{
     pub(crate) method: Method,
     pub(crate) request_url: RequestUrl,
     pub(crate) headers: Option<HeaderMap>,
@@ -32,6 +34,8 @@ pub struct RequestBuilder<
 
 impl<B: Serialize + Clone, P: Pagination, F: Filter, S: Sort, R: Range>
     RequestBuilder<B, P, F, S, R>
+where
+    Query: for<'a> From<&'a F> + for<'a> From<&'a S> + for<'a> From<&'a R>,
 {
     pub fn new(request_url: RequestUrl) -> Self {
         Self {

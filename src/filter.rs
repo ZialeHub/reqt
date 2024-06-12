@@ -8,6 +8,12 @@ pub struct FilterRule {
     pub filters: Vec<(String, String)>,
 }
 
+impl From<&FilterRule> for Query {
+    fn from(_value: &FilterRule) -> Self {
+        Query::new()
+    }
+}
+
 pub trait Filter: Default + Clone
 where
     Self: Sized,
@@ -40,9 +46,4 @@ where
     fn filter<T: IntoIterator>(self, property: impl ToString, value: T) -> Self
     where
         T::Item: ToString;
-
-    /// Convert the filter to a query
-    /// each filter will be joined with the values separated by '='
-    /// The query will be joined with the values separated by '&'
-    fn to_query(&self) -> Query;
 }
