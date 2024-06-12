@@ -5,7 +5,7 @@ mod tests_api42_v2 {
     use reqwest::{Client, StatusCode};
     use serde::{Deserialize, Serialize};
 
-    use crate::{prelude::*, sort::SortOrder};
+    use crate::{prelude::*, range::Range, sort::SortOrder};
     use authorization_derive::Oauth2;
 
     fn get_credentials() -> TestApiConnector {
@@ -24,6 +24,7 @@ mod tests_api42_v2 {
     #[pagination(PaginationTest)]
     #[filter(FilterTest)]
     #[sort(SortTest)]
+    #[range(RangeTest)]
     struct TestApiConnector {
         uid: String,
         secret: String,
@@ -42,6 +43,44 @@ mod tests_api42_v2 {
     }
 
     #[derive(Debug, Clone, Default)]
+    struct RangeTest {
+        pub pattern: String,
+        pub ranges: Vec<(String, String)>,
+    }
+    impl Range for RangeTest {
+        fn pattern(mut self, pattern: impl ToString) -> Self {
+            self.pattern = pattern.to_string();
+            self
+        }
+
+        fn range(
+            mut self,
+            property: impl ToString,
+            min: impl ToString,
+            max: impl ToString,
+        ) -> Self {
+            let mut range = self.pattern.clone();
+            range = range.replace("property", &property.to_string());
+            let values = format!("{},{}", min.to_string(), max.to_string());
+            if let Some(old_range) = self.ranges.iter_mut().find(|(r, _)| r == &range) {
+                old_range.1 = values;
+                return self;
+            }
+            self.ranges.push((range, values));
+            self
+        }
+
+        fn to_query(&self) -> Query {
+            let mut query = Query::new();
+            for (range, values) in self.ranges.iter() {
+                eprintln!("{}, {}", range, values);
+                query = query.add(range, values);
+            }
+            query
+        }
+    }
+
+    #[derive(Debug, Clone, Default)]
     struct SortTest {
         pub pattern: String,
         pub sorts: Vec<String>,
@@ -51,6 +90,16 @@ mod tests_api42_v2 {
             let mut sort = self.pattern.clone();
             sort = sort.replace("property", &property.to_string());
 
+            if let Some(old_sort) = self.sorts.iter_mut().find(|s| {
+                s == &&sort
+                    || s == &&format!("-{}", sort)
+                    || s == &&format!("+{}", sort)
+                    || sort == format!("+{}", s)
+                    || sort == format!("-{}", s)
+            }) {
+                *old_sort = sort;
+                return self;
+            }
             self.sorts.push(sort);
             self
         }
@@ -60,14 +109,25 @@ mod tests_api42_v2 {
             sort = sort.replace("property", &property.to_string());
             sort = sort.replace("order", &order.to_string());
 
+            if let Some(old_sort) = self.sorts.iter_mut().find(|s| s == &&sort) {
+                *old_sort = sort;
+                return self;
+            }
             self.sorts.push(sort);
             self
         }
 
         fn to_query(&self) -> Query {
             let mut query = Query::new();
-            let sorts = self.sorts.join(",");
-            query = query.add("sort", sorts);
+            let mut sorts = String::new();
+            for sort in self.sorts.iter() {
+                sorts.push_str(sort);
+                sorts.push(',');
+            }
+            sorts.pop();
+            if !sorts.is_empty() {
+                query = query.add("sort", sorts);
+            }
             query
         }
 
@@ -96,6 +156,10 @@ mod tests_api42_v2 {
                 values.push(',');
             }
             values.pop();
+            if let Some(old_filter) = self.filters.iter_mut().find(|(f, _)| f == &filter) {
+                old_filter.1 = values;
+                return self;
+            }
             self.filters.push((filter, values));
             self
         }
@@ -119,6 +183,10 @@ mod tests_api42_v2 {
                 values.push(',');
             }
             values.pop();
+            if let Some(old_filter) = self.filters.iter_mut().find(|(f, _)| f == &filters) {
+                old_filter.1 = values;
+                return self;
+            }
             self.filters.push((filters, values));
             self
         }
@@ -197,145 +265,145 @@ mod tests_api42_v2 {
         }
     }
 
-    // #[tokio::test]
-    // async fn get_method_default() -> Result<()> {
-    //     let data_connector = get_credentials();
-    //     let connector = data_connector
-    //         .connect("https://api.intra.42.fr/v2/")
-    //         .await?;
-    //     let mut request = connector.get("users", Query::new())?;
-    //     let response = request.send::<Vec<User>>().await?;
-    //     assert_eq!(response.len(), connector.pagination.size);
-    //     Ok(())
-    // }
-    //
-    // #[tokio::test]
-    // async fn connector_none_pagination() -> Result<()> {
-    //     let data_connector = get_credentials();
-    //     let connector = data_connector
-    //         .connect("https://api.intra.42.fr/v2/")
-    //         .await?
-    //         .pagination(PaginationRule::default());
-    //     let mut request =
-    //         connector.get("users", Query::new().add("filter[primary_campus_id]", 31))?;
-    //     let response = request.send::<Vec<User>>().await?;
-    //     assert_eq!(response.len(), connector.pagination.size);
-    //     Ok(())
-    // }
-    //
-    // #[tokio::test]
-    // async fn connector_fixed_pagination() -> Result<()> {
-    //     let data_connector = get_credentials();
-    //     let connector = data_connector
-    //         .connect("https://api.intra.42.fr/v2/")
-    //         .await?
-    //         .pagination(PaginationRule::Fixed(3));
-    //     let mut request =
-    //         connector.get("users", Query::new().add("filter[primary_campus_id]", 31))?;
-    //     let response = request.send::<Vec<User>>().await?;
-    //     assert_eq!(response.len(), connector.pagination.size * 3);
-    //     Ok(())
-    // }
-    //
-    // #[tokio::test]
-    // async fn connector_one_shot_pagination() -> Result<()> {
-    //     let data_connector = get_credentials();
-    //     let connector = data_connector
-    //         .connect("https://api.intra.42.fr/v2/")
-    //         .await?
-    //         .pagination(PaginationRule::OneShot);
-    //     let mut request =
-    //         connector.get("users", Query::new().add("filter[primary_campus_id]", 31))?;
-    //     let response = request.send::<Vec<User>>().await?;
-    //     assert_eq!(response.len(), 761);
-    //     Ok(())
-    // }
-    //
-    // #[tokio::test]
-    // async fn request_none_pagination_override() -> Result<()> {
-    //     let data_connector = get_credentials();
-    //     let connector = data_connector
-    //         .connect("https://api.intra.42.fr/v2/")
-    //         .await?
-    //         .pagination(PaginationRule::OneShot);
-    //     let mut request = connector
-    //         .get("users", Query::new().add("filter[primary_campus_id]", 31))?
-    //         .pagination(PaginationRule::default());
-    //     let response = request.send::<Vec<User>>().await?;
-    //     assert_eq!(response.len(), connector.pagination.size);
-    //     Ok(())
-    // }
-    //
-    // #[tokio::test]
-    // async fn request_fixed_pagination_override() -> Result<()> {
-    //     let data_connector = get_credentials();
-    //     let connector = data_connector
-    //         .connect("https://api.intra.42.fr/v2/")
-    //         .await?;
-    //     let mut request = connector
-    //         .get("users", Query::new().add("filter[primary_campus_id]", 31))?
-    //         .pagination(PaginationRule::Fixed(3));
-    //     let response = request.send::<Vec<User>>().await?;
-    //     assert_eq!(response.len(), connector.pagination.size * 3);
-    //     Ok(())
-    // }
-    //
-    // #[tokio::test]
-    // async fn request_one_shot_pagination_override() -> Result<()> {
-    //     let data_connector = get_credentials();
-    //     let connector = data_connector
-    //         .connect("https://api.intra.42.fr/v2/")
-    //         .await?;
-    //     let mut request = connector
-    //         .get("users", Query::new().add("filter[primary_campus_id]", 31))?
-    //         .pagination(PaginationRule::OneShot);
-    //     let response = request.send::<Vec<User>>().await?;
-    //     assert_eq!(response.len(), 761);
-    //     Ok(())
-    // }
-    //
-    // #[tokio::test]
-    // async fn request_consistency() -> Result<()> {
-    //     let data_connector = get_credentials();
-    //     let connector = data_connector
-    //         .connect("https://api.intra.42.fr/v2/")
-    //         .await?;
-    //     let mut request = connector
-    //         .get("users", Query::new().add("filter[primary_campus_id]", 31))?
-    //         .pagination(PaginationRule::Fixed(2));
-    //     let first_response = request.send::<Vec<User>>().await?;
-    //     assert_eq!(first_response.len(), connector.pagination.size * 2);
-    //     let second_response = request.send::<Vec<User>>().await?;
-    //     assert_eq!(second_response.len(), connector.pagination.size * 2);
-    //     assert_eq!(request.pagination.current_page(), 5);
-    //     assert!(first_response
-    //         .iter()
-    //         .zip(second_response.iter())
-    //         .all(|(a, b)| a.login != b.login));
-    //     Ok(())
-    // }
-    //
-    // #[tokio::test]
-    // async fn request_consistency_after_reset() -> Result<()> {
-    //     let data_connector = get_credentials();
-    //     let connector = data_connector
-    //         .connect("https://api.intra.42.fr/v2/")
-    //         .await?;
-    //     let mut request = connector
-    //         .get("users", Query::new().add("filter[primary_campus_id]", 31))?
-    //         .pagination(PaginationRule::Fixed(2));
-    //     let first_response = request.send::<Vec<User>>().await?;
-    //     assert_eq!(first_response.len(), connector.pagination.size * 2);
-    //     request.pagination.reset();
-    //     let second_response = request.send::<Vec<User>>().await?;
-    //     assert_eq!(second_response.len(), connector.pagination.size * 2);
-    //     assert_eq!(request.pagination.current_page(), 3);
-    //     assert!(first_response
-    //         .iter()
-    //         .zip(second_response.iter())
-    //         .all(|(a, b)| a.login == b.login));
-    //     Ok(())
-    // }
+    #[tokio::test]
+    async fn get_method_default() -> Result<()> {
+        let data_connector = get_credentials();
+        let connector = data_connector
+            .connect("https://api.intra.42.fr/v2/")
+            .await?;
+        let mut request = connector.get("users", Query::new())?;
+        let response = request.send::<Vec<User>>().await?;
+        assert_eq!(response.len(), connector.pagination.size);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn connector_none_pagination() -> Result<()> {
+        let data_connector = get_credentials();
+        let connector = data_connector
+            .connect("https://api.intra.42.fr/v2/")
+            .await?
+            .pagination(PaginationRule::default());
+        let mut request =
+            connector.get("users", Query::new().add("filter[primary_campus_id]", 31))?;
+        let response = request.send::<Vec<User>>().await?;
+        assert_eq!(response.len(), connector.pagination.size);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn connector_fixed_pagination() -> Result<()> {
+        let data_connector = get_credentials();
+        let connector = data_connector
+            .connect("https://api.intra.42.fr/v2/")
+            .await?
+            .pagination(PaginationRule::Fixed(3));
+        let mut request =
+            connector.get("users", Query::new().add("filter[primary_campus_id]", 31))?;
+        let response = request.send::<Vec<User>>().await?;
+        assert_eq!(response.len(), connector.pagination.size * 3);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn connector_one_shot_pagination() -> Result<()> {
+        let data_connector = get_credentials();
+        let connector = data_connector
+            .connect("https://api.intra.42.fr/v2/")
+            .await?
+            .pagination(PaginationRule::OneShot);
+        let mut request =
+            connector.get("users", Query::new().add("filter[primary_campus_id]", 31))?;
+        let response = request.send::<Vec<User>>().await?;
+        assert_eq!(response.len(), 761);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn request_none_pagination_override() -> Result<()> {
+        let data_connector = get_credentials();
+        let connector = data_connector
+            .connect("https://api.intra.42.fr/v2/")
+            .await?
+            .pagination(PaginationRule::OneShot);
+        let mut request = connector
+            .get("users", Query::new().add("filter[primary_campus_id]", 31))?
+            .pagination(PaginationRule::default());
+        let response = request.send::<Vec<User>>().await?;
+        assert_eq!(response.len(), connector.pagination.size);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn request_fixed_pagination_override() -> Result<()> {
+        let data_connector = get_credentials();
+        let connector = data_connector
+            .connect("https://api.intra.42.fr/v2/")
+            .await?;
+        let mut request = connector
+            .get("users", Query::new().add("filter[primary_campus_id]", 31))?
+            .pagination(PaginationRule::Fixed(3));
+        let response = request.send::<Vec<User>>().await?;
+        assert_eq!(response.len(), connector.pagination.size * 3);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn request_one_shot_pagination_override() -> Result<()> {
+        let data_connector = get_credentials();
+        let connector = data_connector
+            .connect("https://api.intra.42.fr/v2/")
+            .await?;
+        let mut request = connector
+            .get("users", Query::new().add("filter[primary_campus_id]", 31))?
+            .pagination(PaginationRule::OneShot);
+        let response = request.send::<Vec<User>>().await?;
+        assert_eq!(response.len(), 761);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn request_consistency() -> Result<()> {
+        let data_connector = get_credentials();
+        let connector = data_connector
+            .connect("https://api.intra.42.fr/v2/")
+            .await?;
+        let mut request = connector
+            .get("users", Query::new().add("filter[primary_campus_id]", 31))?
+            .pagination(PaginationRule::Fixed(2));
+        let first_response = request.send::<Vec<User>>().await?;
+        assert_eq!(first_response.len(), connector.pagination.size * 2);
+        let second_response = request.send::<Vec<User>>().await?;
+        assert_eq!(second_response.len(), connector.pagination.size * 2);
+        assert_eq!(request.pagination.current_page(), 5);
+        assert!(first_response
+            .iter()
+            .zip(second_response.iter())
+            .all(|(a, b)| a.login != b.login));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn request_consistency_after_reset() -> Result<()> {
+        let data_connector = get_credentials();
+        let connector = data_connector
+            .connect("https://api.intra.42.fr/v2/")
+            .await?;
+        let mut request = connector
+            .get("users", Query::new().add("filter[primary_campus_id]", 31))?
+            .pagination(PaginationRule::Fixed(2));
+        let first_response = request.send::<Vec<User>>().await?;
+        assert_eq!(first_response.len(), connector.pagination.size * 2);
+        request.pagination.reset();
+        let second_response = request.send::<Vec<User>>().await?;
+        assert_eq!(second_response.len(), connector.pagination.size * 2);
+        assert_eq!(request.pagination.current_page(), 3);
+        assert!(first_response
+            .iter()
+            .zip(second_response.iter())
+            .all(|(a, b)| a.login == b.login));
+        Ok(())
+    }
 
     #[tokio::test]
     async fn connector_none_pagination_sort_login_asc() -> Result<()> {
@@ -350,8 +418,11 @@ mod tests_api42_v2 {
             .sort("login");
         let mut request = connector.get("users", Query::new())?;
         let response = request.send::<Vec<User>>().await?;
-        eprintln!("{:?}", response);
-        assert_eq!(response.len(), 1);
+        assert!(response
+            .first()
+            .unwrap()
+            .login
+            .lt(&response.last().unwrap().login));
         Ok(())
     }
 
@@ -368,8 +439,11 @@ mod tests_api42_v2 {
             .sort("-login");
         let mut request = connector.get("users", Query::new())?;
         let response = request.send::<Vec<User>>().await?;
-        eprintln!("{:?}", response);
-        assert_eq!(response.len(), 1);
+        assert!(response
+            .first()
+            .unwrap()
+            .login
+            .gt(&response.last().unwrap().login));
         Ok(())
     }
 
@@ -388,8 +462,18 @@ mod tests_api42_v2 {
             .get("users", Query::new())?
             .set_sort(SortTest::default());
         let response = request.send::<Vec<User>>().await?;
-        eprintln!("{:?}", response);
-        assert_eq!(response.len(), 1);
+        assert!(
+            response
+                .first()
+                .unwrap()
+                .login
+                .gt(&response.last().unwrap().login)
+                || response
+                    .first()
+                    .unwrap()
+                    .login
+                    .lt(&response.last().unwrap().login)
+        );
         Ok(())
     }
 
@@ -407,8 +491,11 @@ mod tests_api42_v2 {
             .pattern_sort("property")
             .sort("login");
         let response = request.send::<Vec<User>>().await?;
-        eprintln!("{:?}", response);
-        assert_eq!(response.len(), 1);
+        assert!(response
+            .first()
+            .unwrap()
+            .login
+            .lt(&response.last().unwrap().login));
         Ok(())
     }
 
@@ -426,8 +513,11 @@ mod tests_api42_v2 {
             .pattern_sort("property")
             .sort("-login");
         let response = request.send::<Vec<User>>().await?;
-        eprintln!("{:?}", response);
-        assert_eq!(response.len(), 1);
+        assert!(response
+            .first()
+            .unwrap()
+            .login
+            .gt(&response.last().unwrap().login));
         Ok(())
     }
 
@@ -447,8 +537,11 @@ mod tests_api42_v2 {
             .pattern_sort("property")
             .sort("login");
         let response = request.send::<Vec<User>>().await?;
-        eprintln!("{:?}", response);
-        assert_eq!(response.len(), 1);
+        assert!(response
+            .first()
+            .unwrap()
+            .login
+            .lt(&response.last().unwrap().login));
         Ok(())
     }
 
@@ -468,8 +561,11 @@ mod tests_api42_v2 {
             .pattern_sort("property")
             .sort("-login");
         let response = request.send::<Vec<User>>().await?;
-        eprintln!("{:?}", response);
-        assert_eq!(response.len(), 1);
+        assert!(response
+            .first()
+            .unwrap()
+            .login
+            .gt(&response.last().unwrap().login));
         Ok(())
     }
 
@@ -543,167 +639,233 @@ mod tests_api42_v2 {
         assert_eq!(response.len(), request.pagination.size);
         Ok(())
     }
+
+    #[tokio::test]
+    async fn connector_none_pagination_range() -> Result<()> {
+        let data_connector = get_credentials();
+        let connector = data_connector
+            .connect("https://api.intra.42.fr/v2/")
+            .await?
+            .pagination(PaginationRule::default())
+            .pattern_range("range[property]")
+            .range("login", "einkaya", "eissarti");
+        let mut request = connector.get("users", Query::new())?;
+        let response = request.send::<Vec<User>>().await?;
+        assert_eq!(response.len(), 21);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn connector_none_pagination_request_range() -> Result<()> {
+        let data_connector = get_credentials();
+        let connector = data_connector
+            .connect("https://api.intra.42.fr/v2/")
+            .await?
+            .pagination(PaginationRule::default());
+        let mut request = connector
+            .get("users", Query::new())?
+            .pattern_range("range[property]")
+            .range("login", "einkaya", "eissarti");
+        let response = request.send::<Vec<User>>().await?;
+        assert_eq!(response.len(), 21);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn connector_none_pagination_range_override() -> Result<()> {
+        let data_connector = get_credentials();
+        let connector = data_connector
+            .connect("https://api.intra.42.fr/v2/")
+            .await?
+            .pagination(PaginationRule::default())
+            .pattern_range("range[property]")
+            .range("login", "einkaya", "eissarti");
+        let mut request = connector
+            .get("users", Query::new())?
+            .range("login", "zhabri", "ziale");
+        let response = request.send::<Vec<User>>().await?;
+        assert_eq!(response.len(), 43);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn connector_none_pagination_range_reset() -> Result<()> {
+        let data_connector = get_credentials();
+        let connector = data_connector
+            .connect("https://api.intra.42.fr/v2/")
+            .await?
+            .pagination(PaginationRule::default())
+            .pattern_range("range[property]")
+            .range("login", "einkaya", "eissarti");
+        let mut request = connector
+            .get("users", Query::new())?
+            .set_range(RangeTest::default());
+        let response = request.send::<Vec<User>>().await?;
+        assert_eq!(response.len(), request.pagination.size);
+        Ok(())
+    }
 }
 
-// #[cfg(test)]
-// mod tests_rest_country {
-//     use serde::{Deserialize, Serialize};
-//
-//     use crate::prelude::*;
-//
-//     #[derive(proc_macro_api_manager::Authorization)]
-//     struct CountryConnector {}
-//     impl CountryConnector {
-//         pub fn new() -> Self {
-//             Self {}
-//         }
-//     }
-//
-//     #[derive(Debug, Serialize, Deserialize)]
-//     struct CountryNameBis {
-//         pub common: String,
-//         pub official: String,
-//     }
-//
-//     #[derive(Debug, Serialize, Deserialize)]
-//     struct CountryName {
-//         pub name: CountryNameBis,
-//     }
-//
-//     #[derive(Debug, Serialize, Deserialize)]
-//     struct Country {
-//         pub name: CountryName,
-//     }
-//
-//     #[tokio::test]
-//     async fn get_france() -> Result<()> {
-//         let connector = CountryConnector::new()
-//             .connect("https://restcountries.com/v3.1/")
-//             .await?;
-//         let mut request = connector.get("name/france", Query::new().add("fields", "name"))?;
-//         let response = request.send::<Country>().await?;
-//         assert_eq!(response.name.name.common, "France");
-//         Ok(())
-//     }
-//
-//     #[tokio::test]
-//     async fn get_all() -> Result<()> {
-//         let connector = CountryConnector::new()
-//             .connect("https://restcountries.com/v3.1/")
-//             .await?;
-//         let mut request = connector.get("all", Query::new().add("fields", "name"))?;
-//         let response = request.send::<Vec<serde_json::Value>>().await?;
-//         assert_eq!(response.len(), 250);
-//         Ok(())
-//     }
-// }
-//
-// #[cfg(test)]
-// mod tests_api42_v3 {
-//     use std::collections::HashMap;
-//
-//     use base64::{engine::general_purpose, Engine as _};
-//     use reqwest::{Client, StatusCode};
-//     use serde::{Deserialize, Serialize};
-//
-//     use crate::prelude::*;
-//
-//     fn get_credentials() -> TestApiConnectorV3 {
-//         let connector: TestApiConnectorV3 = toml::from_str::<Env>(include_str!("../.env"))
-//             .unwrap()
-//             .intra_v3;
-//         connector
-//     }
-//
-//     #[derive(Debug, Clone, Serialize, Deserialize)]
-//     struct Attendance {
-//         user_id: i32,
-//     }
-//
-//     #[derive(Debug, Clone, Deserialize)]
-//     struct TokenResponse {
-//         pub access_token: String,
-//     }
-//
-//     #[derive(Debug, Clone, Deserialize)]
-//     struct TestApiConnectorV3 {
-//         uid: String,
-//         secret: String,
-//         auth_endpoint: String,
-//         realm: String,
-//         user_login: String,
-//         user_pass: String,
-//     }
-//
-//     #[derive(Debug, Clone, Deserialize)]
-//     struct Env {
-//         intra_v3: TestApiConnectorV3,
-//     }
-//
-//     impl Authorization for TestApiConnectorV3 {
-//         async fn connect(&self, url: &str) -> Result<Api<RequestPagination>> {
-//             let connector = ApiBuilder::new(url);
-//             let client = Client::new();
-//
-//             let auth_header = format!(
-//                 "Basic {}",
-//                 general_purpose::STANDARD_NO_PAD.encode(format!("{}:{}", &self.uid, &self.secret))
-//             );
-//             let mut params = HashMap::new();
-//             params.insert("grant_type", "password");
-//             params.insert("username", &self.user_login);
-//             params.insert("password", &self.user_pass);
-//             match client
-//                 .post(format!(
-//                     "{}realms/{}/protocol/openid-connect/token",
-//                     self.auth_endpoint, self.realm
-//                 ))
-//                 .header("Content-Type", "application/x-www-form-urlencoded")
-//                 .header("Authorization", auth_header)
-//                 .form(&params)
-//                 .send()
-//                 .await
-//             {
-//                 Ok(response) => {
-//                     eprintln!("{:?}", response);
-//                     match response.status() {
-//                         StatusCode::OK
-//                         | StatusCode::CREATED
-//                         | StatusCode::ACCEPTED
-//                         | StatusCode::NO_CONTENT => {}
-//                         status => return Err(status.into()),
-//                     }
-//                     match response.text().await {
-//                         Ok(response_text) => {
-//                             let token: TokenResponse =
-//                                 serde_json::from_str(&response_text).unwrap();
-//                             Ok(connector.bearer(token.access_token).build())
-//                         }
-//                         Err(e) => Err(ApiError::ResponseToText(e)),
-//                     }
-//                 }
-//                 Err(e) => Err(ApiError::ReqwestExecute(e)),
-//             }
-//         }
-//     }
-//
-//     #[derive(Debug, Clone, Serialize, Deserialize)]
-//     struct User {
-//         pub login: String,
-//     }
-//
-//     #[tokio::test]
-//     async fn get_method_default() -> Result<()> {
-//         let data_connector = get_credentials();
-//         let connector = data_connector
-//             .connect("https://chronos.42.fr/api/v1/")
-//             .await?;
-//         let mut request = connector.get("users/vnaud/attendances", Query::new())?;
-//         let response = request.send::<Vec<Attendance>>().await?;
-//         response.iter().all(|attendance| {
-//             assert_eq!(attendance.user_id, 108323);
-//             true
-//         });
-//         Ok(())
-//     }
-// }
+#[cfg(test)]
+mod tests_rest_country {
+    use authorization_derive::Authorization;
+    use serde::{Deserialize, Serialize};
+
+    use crate::prelude::*;
+
+    #[derive(Authorization)]
+    struct CountryConnector {}
+    impl CountryConnector {
+        pub fn new() -> Self {
+            Self {}
+        }
+    }
+
+    #[derive(Debug, Serialize, Deserialize)]
+    struct CountryNameBis {
+        pub common: String,
+        pub official: String,
+    }
+
+    #[derive(Debug, Serialize, Deserialize)]
+    struct CountryName {
+        pub name: CountryNameBis,
+    }
+
+    #[derive(Debug, Serialize, Deserialize)]
+    struct Country {
+        pub name: CountryName,
+    }
+
+    #[tokio::test]
+    async fn get_france() -> Result<()> {
+        let connector = CountryConnector::new()
+            .connect("https://restcountries.com/v3.1/")
+            .await?;
+        let mut request = connector.get("name/france", Query::new().add("fields", "name"))?;
+        let response = request.send::<Country>().await?;
+        assert_eq!(response.name.name.common, "France");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn get_all() -> Result<()> {
+        let connector = CountryConnector::new()
+            .connect("https://restcountries.com/v3.1/")
+            .await?;
+        let mut request = connector.get("all", Query::new().add("fields", "name"))?;
+        let response = request.send::<Vec<serde_json::Value>>().await?;
+        assert_eq!(response.len(), 250);
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests_api42_v3 {
+    use std::collections::HashMap;
+
+    use base64::{engine::general_purpose, Engine as _};
+    use reqwest::{Client, StatusCode};
+    use serde::{Deserialize, Serialize};
+
+    use crate::prelude::*;
+
+    fn get_credentials() -> TestApiConnectorV3 {
+        let connector: TestApiConnectorV3 = toml::from_str::<Env>(include_str!("../.env"))
+            .unwrap()
+            .intra_v3;
+        connector
+    }
+
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    struct Attendance {
+        user_id: i32,
+    }
+
+    #[derive(Debug, Clone, Deserialize)]
+    struct TokenResponse {
+        pub access_token: String,
+    }
+
+    #[derive(Debug, Clone, Deserialize)]
+    struct TestApiConnectorV3 {
+        uid: String,
+        secret: String,
+        auth_endpoint: String,
+        realm: String,
+        user_login: String,
+        user_pass: String,
+    }
+
+    #[derive(Debug, Clone, Deserialize)]
+    struct Env {
+        intra_v3: TestApiConnectorV3,
+    }
+
+    impl Authorization for TestApiConnectorV3 {
+        async fn connect(&self, url: &str) -> Result<Api<RequestPagination>> {
+            let connector = ApiBuilder::new(url);
+            let client = Client::new();
+
+            let auth_header = format!(
+                "Basic {}",
+                general_purpose::STANDARD_NO_PAD.encode(format!("{}:{}", &self.uid, &self.secret))
+            );
+            let mut params = HashMap::new();
+            params.insert("grant_type", "password");
+            params.insert("username", &self.user_login);
+            params.insert("password", &self.user_pass);
+            match client
+                .post(format!(
+                    "{}realms/{}/protocol/openid-connect/token",
+                    self.auth_endpoint, self.realm
+                ))
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .header("Authorization", auth_header)
+                .form(&params)
+                .send()
+                .await
+            {
+                Ok(response) => {
+                    eprintln!("{:?}", response);
+                    match response.status() {
+                        StatusCode::OK
+                        | StatusCode::CREATED
+                        | StatusCode::ACCEPTED
+                        | StatusCode::NO_CONTENT => {}
+                        status => return Err(status.into()),
+                    }
+                    match response.text().await {
+                        Ok(response_text) => {
+                            let token: TokenResponse =
+                                serde_json::from_str(&response_text).unwrap();
+                            Ok(connector.bearer(token.access_token).build())
+                        }
+                        Err(e) => Err(ApiError::ResponseToText(e)),
+                    }
+                }
+                Err(e) => Err(ApiError::ReqwestExecute(e)),
+            }
+        }
+    }
+
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    struct User {
+        pub login: String,
+    }
+
+    #[tokio::test]
+    async fn get_method_default() -> Result<()> {
+        let data_connector = get_credentials();
+        let connector = data_connector
+            .connect("https://chronos.42.fr/api/v1/")
+            .await?;
+        let mut request = connector.get("users/vnaud/attendances", Query::new())?;
+        let response = request.send::<Vec<Attendance>>().await?;
+        response.iter().all(|attendance| {
+            assert_eq!(attendance.user_id, 108323);
+            true
+        });
+        Ok(())
+    }
+}

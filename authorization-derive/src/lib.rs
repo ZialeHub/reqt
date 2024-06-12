@@ -4,36 +4,47 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::Attribute;
 
-#[proc_macro_derive(Authorization, attributes(pagination, filter, sort))]
+/// The derive macro #[derive(Authorization)] is used to implement the Authorization trait by default for a struct.
+/// The trait will not add any authorization to the Api by default.
+#[proc_macro_derive(Authorization, attributes(pagination, filter, sort, range))]
 pub fn authorization_derive(input: TokenStream) -> TokenStream {
     let ast: syn::DeriveInput = syn::parse(input).unwrap();
     impl_authorization_derive(&ast)
 }
 
-#[proc_macro_derive(Oauth2, attributes(pagination, filter, sort))]
+/// The derive macro #[derive(Oauth2)] is used to implement the Authorization trait for a struct.
+/// The trait will add OAuth2 authorization to the Api.
+#[proc_macro_derive(Oauth2, attributes(pagination, filter, sort, range))]
 pub fn oauth2_derive(input: TokenStream) -> TokenStream {
     let ast = syn::parse(input).unwrap();
     impl_oauth2_derive(&ast)
 }
 
-#[proc_macro_derive(Basic, attributes(pagination, filter, sort))]
+/// The derive macro #[derive(Basic)] is used to implement the Authorization trait for a struct.
+/// The trait will add Basic authorization to the Api.
+#[proc_macro_derive(Basic, attributes(pagination, filter, sort, range))]
 pub fn basic_derive(input: TokenStream) -> TokenStream {
     let ast = syn::parse(input).unwrap();
     impl_basic_derive(&ast)
 }
 
-#[proc_macro_derive(Bearer, attributes(pagination, filter, sort))]
+/// The derive macro #[derive(Bearer)] is used to implement the Authorization trait for a struct.
+/// The trait will add Bearer authorization to the Api.
+#[proc_macro_derive(Bearer, attributes(pagination, filter, sort, range))]
 pub fn bearer_derive(input: TokenStream) -> TokenStream {
     let ast = syn::parse(input).unwrap();
     impl_bearer_derive(&ast)
 }
 
-#[proc_macro_derive(ApiKey, attributes(pagination, filter, sort))]
+/// The derive macro #[derive(ApiKey)] is used to implement the Authorization trait for a struct.
+/// The trait will add ApiKey authorization to the Api.
+#[proc_macro_derive(ApiKey, attributes(pagination, filter, sort, range))]
 pub fn apikey_derive(input: TokenStream) -> TokenStream {
     let ast = syn::parse(input).unwrap();
     impl_apikey_derive(&ast)
 }
 
+/// Only impl the Authorization trait for the struct, with the default implementation.
 fn impl_authorization_derive(ast: &syn::DeriveInput) -> TokenStream {
     let name = &ast.ident;
     let gen = quote! {
@@ -42,6 +53,10 @@ fn impl_authorization_derive(ast: &syn::DeriveInput) -> TokenStream {
     gen.into()
 }
 
+/// Impl the Authorization trait for the struct, with the OAuth2 implementation.
+/// The trait accept the pagination, filter, sort and range types as attributes. (Optionals)
+/// We use the AST to find the attributes (pagination, filter, sort and range) and parse them to the correct type.
+/// If the attribute is not found, we use the default type.
 fn impl_oauth2_derive(ast: &syn::DeriveInput) -> TokenStream {
     let pagination = ast
         .attrs
@@ -94,10 +109,27 @@ fn impl_oauth2_derive(ast: &syn::DeriveInput) -> TokenStream {
             }
         })
         .unwrap_or_else(|| syn::parse_str::<syn::Type>("SortRule").unwrap());
+    let range = ast
+        .attrs
+        .iter()
+        .find(|attr| attr.path().is_ident("range"))
+        .and_then(|attr| {
+            if let Attribute {
+                meta: syn::Meta::List(syn::MetaList { tokens: token, .. }),
+                ..
+            } = attr
+            {
+                let name = token.clone().into_iter().next().unwrap().to_string();
+                syn::parse_str::<syn::Type>(&name).ok()
+            } else {
+                None
+            }
+        })
+        .unwrap_or_else(|| syn::parse_str::<syn::Type>("RangeRule").unwrap());
     let name = &ast.ident;
     let gen = quote! {
-        impl Authorization<#pagination, #filter, #sort> for #name {
-            async fn connect(&self, url: &str) -> Result<Api<#pagination, #filter, #sort>> {
+        impl Authorization<#pagination, #filter, #sort, #range> for #name {
+            async fn connect(&self, url: &str) -> Result<Api<#pagination, #filter, #sort, #range>> {
                 let connector = ApiBuilder::new(url);
                 let client = Client::new();
 
@@ -142,6 +174,10 @@ fn impl_oauth2_derive(ast: &syn::DeriveInput) -> TokenStream {
     gen.into()
 }
 
+/// Impl the Authorization trait for the struct, with the Basic implementation.
+/// The trait accept the pagination, filter, sort and range types as attributes. (Optionals)
+/// We use the AST to find the attributes (pagination, filter, sort and range) and parse them to the correct type.
+/// If the attribute is not found, we use the default type.
 fn impl_basic_derive(ast: &syn::DeriveInput) -> TokenStream {
     let pagination = ast
         .attrs
@@ -194,10 +230,27 @@ fn impl_basic_derive(ast: &syn::DeriveInput) -> TokenStream {
             }
         })
         .unwrap_or_else(|| syn::parse_str::<syn::Type>("SortRule").unwrap());
+    let range = ast
+        .attrs
+        .iter()
+        .find(|attr| attr.path().is_ident("range"))
+        .and_then(|attr| {
+            if let Attribute {
+                meta: syn::Meta::List(syn::MetaList { tokens: token, .. }),
+                ..
+            } = attr
+            {
+                let name = token.clone().into_iter().next().unwrap().to_string();
+                syn::parse_str::<syn::Type>(&name).ok()
+            } else {
+                None
+            }
+        })
+        .unwrap_or_else(|| syn::parse_str::<syn::Type>("RangeRule").unwrap());
     let name = &ast.ident;
     let gen = quote! {
-        impl Authorization<#pagination, #filter, #sort> for #name {
-            async fn connect(&self, url: &str) -> Result<Api<#pagination, #filter, #sort>> {
+        impl Authorization<#pagination, #filter, #sort, #range> for #name {
+            async fn connect(&self, url: &str) -> Result<Api<#pagination, #filter, #sort, #range>> {
                 let connector = ApiBuilder::new(url);
                 let client = Client::new();
                 let encoded_auth = general_purpose::STANDARD_NO_PAD.encode(format!("{}:{}", &self.login, &self.password));
@@ -209,6 +262,10 @@ fn impl_basic_derive(ast: &syn::DeriveInput) -> TokenStream {
     gen.into()
 }
 
+/// Impl the Authorization trait for the struct, with the Bearer implementation.
+/// The trait accept the pagination, filter, sort and range types as attributes. (Optionals)
+/// We use the AST to find the attributes (pagination, filter, sort and range) and parse them to the correct type.
+/// If the attribute is not found, we use the default type.
 fn impl_bearer_derive(ast: &syn::DeriveInput) -> TokenStream {
     let pagination = ast
         .attrs
@@ -261,10 +318,27 @@ fn impl_bearer_derive(ast: &syn::DeriveInput) -> TokenStream {
             }
         })
         .unwrap_or_else(|| syn::parse_str::<syn::Type>("SortRule").unwrap());
+    let range = ast
+        .attrs
+        .iter()
+        .find(|attr| attr.path().is_ident("range"))
+        .and_then(|attr| {
+            if let Attribute {
+                meta: syn::Meta::List(syn::MetaList { tokens: token, .. }),
+                ..
+            } = attr
+            {
+                let name = token.clone().into_iter().next().unwrap().to_string();
+                syn::parse_str::<syn::Type>(&name).ok()
+            } else {
+                None
+            }
+        })
+        .unwrap_or_else(|| syn::parse_str::<syn::Type>("RangeRule").unwrap());
     let name = &ast.ident;
     let gen = quote! {
-        impl Authorization<#pagination, #filter, #sort> for #name {
-            async fn connect(&self, url: &str) -> Result<Api<#pagination, #filter, #sort>> {
+        impl Authorization<#pagination, #filter, #sort, #range> for #name {
+            async fn connect(&self, url: &str) -> Result<Api<#pagination, #filter, #sort, #range>> {
                 let connector = ApiBuilder::new(url);
                 let client = Client::new();
 
@@ -275,6 +349,10 @@ fn impl_bearer_derive(ast: &syn::DeriveInput) -> TokenStream {
     gen.into()
 }
 
+/// Impl the Authorization trait for the struct, with the ApiKey implementation.
+/// The trait accept the pagination, filter, sort and range types as attributes. (Optionals)
+/// We use the AST to find the attributes (pagination, filter, sort and range) and parse them to the correct type.
+/// If the attribute is not found, we use the default type.
 fn impl_apikey_derive(ast: &syn::DeriveInput) -> TokenStream {
     let pagination = ast
         .attrs
@@ -327,10 +405,27 @@ fn impl_apikey_derive(ast: &syn::DeriveInput) -> TokenStream {
             }
         })
         .unwrap_or_else(|| syn::parse_str::<syn::Type>("SortRule").unwrap());
+    let range = ast
+        .attrs
+        .iter()
+        .find(|attr| attr.path().is_ident("range"))
+        .and_then(|attr| {
+            if let Attribute {
+                meta: syn::Meta::List(syn::MetaList { tokens: token, .. }),
+                ..
+            } = attr
+            {
+                let name = token.clone().into_iter().next().unwrap().to_string();
+                syn::parse_str::<syn::Type>(&name).ok()
+            } else {
+                None
+            }
+        })
+        .unwrap_or_else(|| syn::parse_str::<syn::Type>("RangeRule").unwrap());
     let name = &ast.ident;
     let gen = quote! {
-        impl Authorization<#pagination, #filter, #sort> for #name {
-            async fn connect(&self, url: &str) -> Result<Api<#pagination, #filter, #sort>> {
+        impl Authorization<#pagination, #filter, #sort, #range> for #name {
+            async fn connect(&self, url: &str) -> Result<Api<#pagination, #filter, #sort, #range>> {
                 let connector = ApiBuilder::new(url);
                 let client = Client::new();
 

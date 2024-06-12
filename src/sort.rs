@@ -38,9 +38,11 @@ where
 
     /// Add a sort on a property to the list
     /// Usage: in case of : sort=-property1,property2
+    /// You should implement this method to override the property if already exists
     fn sort(self, property: impl ToString) -> Self;
 
     /// Add a sort with order on a property to the list
+    /// You should implement this method to override the property if already exists
     fn sort_with(self, property: impl ToString, order: SortOrder) -> Self;
 
     /// Convert the sort to a query

@@ -1,4 +1,4 @@
-workspace = { members = [ "authorization-derive", "filter-derive", "pagination-derive", "sort-derive"] }
+workspace = { members = [ "authorization-derive", "filter-derive", "pagination-derive", "range-derive", "sort-derive"] }
 [package]
 name = "api_manager"
 version = "0.1.0"
@@ -18,6 +18,7 @@ authorization-derive = { path = "./authorization-derive" }
 pagination-derive= { path = "./pagination-derive" }
 filter-derive= { path = "./filter-derive" }
 sort-derive= { path = "./sort-derive" }
+range-derive= { path = "./range-derive" }
 
 [dev-dependencies]
 toml = "0.8.14"

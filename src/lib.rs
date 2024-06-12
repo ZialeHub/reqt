@@ -5,6 +5,7 @@ pub mod filter;
 pub mod pagination;
 pub mod prelude;
 pub mod query;
+pub mod range;
 pub mod request;
 pub mod request_builder;
 pub mod request_url;

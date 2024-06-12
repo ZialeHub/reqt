@@ -5,6 +5,7 @@ use crate::{
     filter::Filter,
     pagination::Pagination,
     query::Query,
+    range::Range,
     sort::Sort,
 };
 
@@ -50,17 +51,19 @@ impl RequestUrl {
 
     /// Convert the request URL to a URL
     /// that can be used in a request (Contains the query with pagination)
-    pub fn as_url<P: Pagination, F: Filter, S: Sort>(
+    pub fn as_url<P: Pagination, F: Filter, S: Sort, R: Range>(
         &self,
         pagination: &P,
         filter: &F,
         sort: &S,
+        range: &R,
     ) -> Result<Url> {
         let mut query = self.query.clone();
 
         query = query.join(pagination.get_current_page());
         query = query.join(filter.to_query());
         query = query.join(sort.to_query());
+        query = query.join(range.to_query());
 
         Url::parse(&format!("{}{}{}", self.endpoint, self.route, query))
             .map_err(ApiError::WrongUrlFormat)

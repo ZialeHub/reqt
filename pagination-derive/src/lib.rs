@@ -3,6 +3,8 @@ extern crate proc_macro;
 use proc_macro::TokenStream;
 use quote::quote;
 
+/// The derive macro #[derive(Pagination)] is used to implement the Pagination trait by default for a struct.
+/// By default the pagination trait will not add any pagination to the Query.
 #[proc_macro_derive(Pagination)]
 pub fn pagination_derive(input: TokenStream) -> TokenStream {
     let ast = syn::parse(input).unwrap();

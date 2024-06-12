@@ -6,6 +6,7 @@ use crate::{
     error::{ApiError, Result},
     filter::{Filter, FilterRule},
     pagination::{Pagination, PaginationRule, RequestPagination},
+    range::{Range, RangeRule},
     request_url::RequestUrl,
     sort::{Sort, SortOrder, SortRule},
 };
@@ -28,6 +29,7 @@ pub struct Request<
     P: Pagination = RequestPagination,
     F: Filter = FilterRule,
     S: Sort = SortRule,
+    R: Range = RangeRule,
 > {
     pub(crate) method: Method,
     pub(crate) request_url: RequestUrl,
@@ -36,9 +38,10 @@ pub struct Request<
     pub(crate) pagination: P,
     pub(crate) filter: F,
     pub(crate) sort: S,
+    pub(crate) range: R,
 }
 
-impl<B: Serialize + Clone, P: Pagination, F: Filter, S: Sort> Request<B, P, F, S> {
+impl<B: Serialize + Clone, P: Pagination, F: Filter, S: Sort, R: Range> Request<B, P, F, S, R> {
     /// Create a new request
     pub fn new(
         method: Method,
@@ -54,6 +57,7 @@ impl<B: Serialize + Clone, P: Pagination, F: Filter, S: Sort> Request<B, P, F, S
             pagination: P::default(),
             filter: F::default(),
             sort: S::default(),
+            range: R::default(),
         }
     }
 
@@ -82,9 +86,9 @@ impl<B: Serialize + Clone, P: Pagination, F: Filter, S: Sort> Request<B, P, F, S
         };
 
         let client = Client::new();
-        let url = self
-            .request_url
-            .as_url(&self.pagination, &self.filter, &self.sort)?;
+        let url =
+            self.request_url
+                .as_url(&self.pagination, &self.filter, &self.sort, &self.range)?;
         let mut request_builder = client.request(self.method.clone(), url).body(body);
         if let Some(headers) = &self.headers {
             request_builder = request_builder.headers(headers.clone());
@@ -198,9 +202,9 @@ impl<B: Serialize + Clone, P: Pagination, F: Filter, S: Sort> Request<B, P, F, S
         let mut json_values = Value::Array(Self::parse_response(first_response).await?);
 
         for _ in 1..page_count {
-            let next_url = self
-                .request_url
-                .as_url(&self.pagination, &self.filter, &self.sort)?;
+            let next_url =
+                self.request_url
+                    .as_url(&self.pagination, &self.filter, &self.sort, &self.range)?;
 
             let next_request = Self::build_next_reqwest(&request, next_url)?;
 
@@ -232,6 +236,11 @@ impl<B: Serialize + Clone, P: Pagination, F: Filter, S: Sort> Request<B, P, F, S
 
     pub fn set_sort(mut self, sort: S) -> Self {
         self.sort = sort;
+        self
+    }
+
+    pub fn set_range(mut self, range: R) -> Self {
+        self.range = range;
         self
     }
 
@@ -273,6 +282,21 @@ impl<B: Serialize + Clone, P: Pagination, F: Filter, S: Sort> Request<B, P, F, S
 
     pub fn sort_with(mut self, property: impl ToString, order: SortOrder) -> Self {
         self.sort = self.sort.sort_with(property, order);
+        self
+    }
+
+    pub fn pattern_range(mut self, pattern: impl ToString) -> Self {
+        self.range = self.range.pattern(pattern);
+        self
+    }
+
+    pub fn range(
+        mut self,
+        property: impl ToString,
+        min: impl ToString,
+        max: impl ToString,
+    ) -> Self {
+        self.range = self.range.range(property, min, max);
         self
     }
 }

@@ -5,6 +5,7 @@ use crate::{
     filter::{Filter, FilterRule},
     pagination::{Pagination, RequestPagination},
     prelude::PaginationRule,
+    range::{Range, RangeRule},
     request::Request,
     request_url::RequestUrl,
     sort::{Sort, SortRule},
@@ -17,6 +18,7 @@ pub struct RequestBuilder<
     P: Pagination = RequestPagination,
     F: Filter = FilterRule,
     S: Sort = SortRule,
+    R: Range = RangeRule,
 > {
     pub(crate) method: Method,
     pub(crate) request_url: RequestUrl,
@@ -25,9 +27,12 @@ pub struct RequestBuilder<
     pub(crate) pagination: P,
     pub(crate) filter: F,
     pub(crate) sort: S,
+    pub(crate) range: R,
 }
 
-impl<B: Serialize + Clone, P: Pagination, F: Filter, S: Sort> RequestBuilder<B, P, F, S> {
+impl<B: Serialize + Clone, P: Pagination, F: Filter, S: Sort, R: Range>
+    RequestBuilder<B, P, F, S, R>
+{
     pub fn new(request_url: RequestUrl) -> Self {
         Self {
             method: Method::GET,
@@ -37,6 +42,7 @@ impl<B: Serialize + Clone, P: Pagination, F: Filter, S: Sort> RequestBuilder<B, 
             pagination: P::default(),
             filter: F::default(),
             sort: S::default(),
+            range: R::default(),
         }
     }
 
@@ -70,7 +76,12 @@ impl<B: Serialize + Clone, P: Pagination, F: Filter, S: Sort> RequestBuilder<B, 
         self
     }
 
-    pub fn build(self) -> Request<B, P, F, S> {
+    pub fn range(mut self, range: R) -> Self {
+        self.range = range;
+        self
+    }
+
+    pub fn build(self) -> Request<B, P, F, S, R> {
         Request {
             method: self.method,
             request_url: self.request_url,
@@ -79,6 +90,7 @@ impl<B: Serialize + Clone, P: Pagination, F: Filter, S: Sort> RequestBuilder<B, 
             pagination: self.pagination,
             filter: self.filter,
             sort: self.sort,
+            range: self.range,
         }
     }
 }

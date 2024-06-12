@@ -25,6 +25,7 @@ where
     fn pattern(self, pattern: impl ToString) -> Self;
 
     /// Add a a specific filter on a property to the list
+    /// You should implement this method to override the property if already exists
     fn filter_with<T: IntoIterator>(
         self,
         property: impl ToString,
@@ -35,6 +36,7 @@ where
         T::Item: ToString;
 
     /// Add a filter to the list
+    /// You should implement this method to override the property if already exists
     fn filter<T: IntoIterator>(self, property: impl ToString, value: T) -> Self
     where
         T::Item: ToString;

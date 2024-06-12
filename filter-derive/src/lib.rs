@@ -3,6 +3,8 @@ extern crate proc_macro;
 use proc_macro::TokenStream;
 use quote::quote;
 
+/// The derive macro #[derive(Filter)] is used to implement the Filter trait by default for a struct.
+/// The trait will not add any filters to the Query by default.
 #[proc_macro_derive(Filter)]
 pub fn filter_derive(input: TokenStream) -> TokenStream {
     let ast = syn::parse(input).unwrap();
@@ -60,4 +62,3 @@ fn impl_filter_derive(ast: &syn::DeriveInput) -> TokenStream {
     };
     gen.into()
 }
-
