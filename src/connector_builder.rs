@@ -65,7 +65,7 @@ where
     }
 
     pub fn pagination(mut self, pagination: PaginationRule) -> Self {
-        self.pagination = self.pagination.pagination(pagination);
+        self.pagination = self.pagination.set_pagination(pagination);
         self
     }
 

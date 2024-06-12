@@ -203,7 +203,7 @@ where
         T: DeserializeOwned + Serialize,
     {
         let page_count =
-            Self::get_page_count(first_response.headers(), self.pagination.get_pagination());
+            Self::get_page_count(first_response.headers(), self.pagination.pagination());
         self.pagination.next();
         let mut json_values = Value::Array(Self::parse_response(first_response).await?);
 
@@ -231,7 +231,7 @@ where
 
     /// Pagination setter to override the Api pagination
     pub fn pagination(mut self, pagination: PaginationRule) -> Self {
-        self.pagination = self.pagination.pagination(pagination);
+        self.pagination = self.pagination.set_pagination(pagination);
         self
     }
 

@@ -107,7 +107,7 @@ where
     Query: for<'a> From<&'a F> + for<'a> From<&'a S> + for<'a> From<&'a R>,
 {
     pub fn pagination(mut self, pagination: PaginationRule) -> Self {
-        self.pagination = self.pagination.pagination(pagination);
+        self.pagination = self.pagination.set_pagination(pagination);
         self
     }
 
@@ -187,7 +187,7 @@ where
             .query(query);
 
         let request = Request::<(), P, F, S, R>::new(url.method.clone(), url, Some(headers), None)
-            .pagination(self.pagination.get_pagination().clone())
+            .pagination(self.pagination.pagination().clone())
             .set_filter(self.filter.clone())
             .set_sort(self.sort.clone())
             .set_range(self.range.clone());
@@ -216,7 +216,7 @@ where
             .query(query);
 
         let request = Request::<B, P, F, S, R>::new(url.method.clone(), url, Some(headers), body)
-            .pagination(self.pagination.get_pagination().clone())
+            .pagination(self.pagination.pagination().clone())
             .set_filter(self.filter.clone())
             .set_sort(self.sort.clone())
             .set_range(self.range.clone());
@@ -245,7 +245,7 @@ where
             .query(query);
 
         let request = Request::<B, P, F, S, R>::new(url.method.clone(), url, Some(headers), body)
-            .pagination(self.pagination.get_pagination().clone())
+            .pagination(self.pagination.pagination().clone())
             .set_filter(self.filter.clone())
             .set_sort(self.sort.clone())
             .set_range(self.range.clone());
@@ -274,7 +274,7 @@ where
             .query(query);
 
         let request = Request::<B, P, F, S, R>::new(url.method.clone(), url, Some(headers), body)
-            .pagination(self.pagination.get_pagination().clone())
+            .pagination(self.pagination.pagination().clone())
             .set_filter(self.filter.clone())
             .set_sort(self.sort.clone())
             .set_range(self.range.clone());
@@ -293,7 +293,7 @@ where
             .query(query);
 
         let request = Request::<(), P, F, S, R>::new(url.method.clone(), url, Some(headers), None)
-            .pagination(self.pagination.get_pagination().clone())
+            .pagination(self.pagination.pagination().clone())
             .set_filter(self.filter.clone())
             .set_sort(self.sort.clone())
             .set_range(self.range.clone());

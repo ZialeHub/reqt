@@ -22,11 +22,11 @@ fn impl_pagination_derive(ast: &syn::DeriveInput) -> TokenStream {
             fn reset(&mut self) {
                 self.current_page = 1;
             }
-            fn pagination(mut self, rule: PaginationRule) -> Self {
+            fn set_pagination(mut self, rule: PaginationRule) -> Self {
                 self.pagination = rule;
                 self
             }
-            fn get_pagination(&self) -> &PaginationRule {
+            fn pagination(&self) -> &PaginationRule {
                 &self.pagination
             }
             fn current_page(&self) -> usize {

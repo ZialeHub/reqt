@@ -230,12 +230,12 @@ mod tests_api42_v2 {
             self
         }
 
-        fn pagination(mut self, pagination: PaginationRule) -> Self {
+        fn set_pagination(mut self, pagination: PaginationRule) -> Self {
             self.pagination = pagination;
             self
         }
 
-        fn get_pagination(&self) -> &PaginationRule {
+        fn pagination(&self) -> &PaginationRule {
             &self.pagination
         }
 

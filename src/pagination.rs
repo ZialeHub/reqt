@@ -57,8 +57,8 @@ impl Default for RequestPagination {
 pub trait Pagination: Clone + Default {
     fn size(self, size: usize) -> Self;
     fn reset(&mut self);
-    fn pagination(self, rule: PaginationRule) -> Self;
-    fn get_pagination(&self) -> &PaginationRule;
+    fn set_pagination(self, rule: PaginationRule) -> Self;
+    fn pagination(&self) -> &PaginationRule;
     fn current_page(&self) -> usize;
     fn get_current_page(&self) -> Query;
     fn get_size(&self) -> Query;
