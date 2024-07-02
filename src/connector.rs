@@ -1,4 +1,8 @@
-use std::{fmt::Display, future::Future};
+use std::{
+    fmt::Display,
+    future::Future,
+    sync::{Arc, Mutex},
+};
 
 use reqwest::{header::HeaderMap, Method};
 use serde::Serialize;
@@ -7,9 +11,10 @@ use crate::{
     error::Result,
     filter::{Filter, FilterRule},
     pagination::{Pagination, PaginationRule, RequestPagination},
-    prelude::ApiBuilder,
+    prelude::{ApiBuilder, RequestBuilder},
     query::Query,
     range::{Range, RangeRule},
+    rate_limiter::RateLimiter,
     request::Request,
     request_url::RequestUrl,
     sort::{Sort, SortRule},
@@ -100,6 +105,7 @@ pub struct Api<
     pub(crate) filter: F,
     pub(crate) sort: S,
     pub(crate) range: R,
+    pub(crate) rate_limit: Arc<Mutex<RateLimiter>>,
 }
 
 impl<P: Pagination, F: Filter, S: Sort, R: Range> Api<P, F, S, R>
@@ -186,11 +192,13 @@ where
             .method(Method::GET)
             .query(query);
 
-        let request = Request::<(), P, F, S, R>::new(url.method.clone(), url, Some(headers), None)
+        let request = RequestBuilder::<(), P, F, S, R>::new(url, self.rate_limit.clone())
+            .headers(headers)
             .pagination(self.pagination.pagination().clone())
-            .set_filter(self.filter.clone())
-            .set_sort(self.sort.clone())
-            .set_range(self.range.clone());
+            .filter(self.filter.clone())
+            .sort(self.sort.clone())
+            .range(self.range.clone())
+            .build();
 
         Ok(request)
     }
@@ -215,11 +223,17 @@ where
             .method(Method::POST)
             .query(query);
 
-        let request = Request::<B, P, F, S, R>::new(url.method.clone(), url, Some(headers), body)
-            .pagination(self.pagination.pagination().clone())
-            .set_filter(self.filter.clone())
-            .set_sort(self.sort.clone())
-            .set_range(self.range.clone());
+        let mut request_builder =
+            RequestBuilder::<B, P, F, S, R>::new(url, self.rate_limit.clone())
+                .headers(headers)
+                .pagination(self.pagination.pagination().clone())
+                .filter(self.filter.clone())
+                .sort(self.sort.clone())
+                .range(self.range.clone());
+        if let Some(body) = body {
+            request_builder = request_builder.body(body);
+        }
+        let request = request_builder.build();
 
         Ok(request)
     }
@@ -244,11 +258,17 @@ where
             .method(Method::PUT)
             .query(query);
 
-        let request = Request::<B, P, F, S, R>::new(url.method.clone(), url, Some(headers), body)
-            .pagination(self.pagination.pagination().clone())
-            .set_filter(self.filter.clone())
-            .set_sort(self.sort.clone())
-            .set_range(self.range.clone());
+        let mut request_builder =
+            RequestBuilder::<B, P, F, S, R>::new(url, self.rate_limit.clone())
+                .headers(headers)
+                .pagination(self.pagination.pagination().clone())
+                .filter(self.filter.clone())
+                .sort(self.sort.clone())
+                .range(self.range.clone());
+        if let Some(body) = body {
+            request_builder = request_builder.body(body);
+        }
+        let request = request_builder.build();
 
         Ok(request)
     }
@@ -273,11 +293,17 @@ where
             .method(Method::PATCH)
             .query(query);
 
-        let request = Request::<B, P, F, S, R>::new(url.method.clone(), url, Some(headers), body)
-            .pagination(self.pagination.pagination().clone())
-            .set_filter(self.filter.clone())
-            .set_sort(self.sort.clone())
-            .set_range(self.range.clone());
+        let mut request_builder =
+            RequestBuilder::<B, P, F, S, R>::new(url, self.rate_limit.clone())
+                .headers(headers)
+                .pagination(self.pagination.pagination().clone())
+                .filter(self.filter.clone())
+                .sort(self.sort.clone())
+                .range(self.range.clone());
+        if let Some(body) = body {
+            request_builder = request_builder.body(body);
+        }
+        let request = request_builder.build();
 
         Ok(request)
     }
@@ -292,11 +318,13 @@ where
             .method(Method::DELETE)
             .query(query);
 
-        let request = Request::<(), P, F, S, R>::new(url.method.clone(), url, Some(headers), None)
+        let request = RequestBuilder::<(), P, F, S, R>::new(url, self.rate_limit.clone())
+            .headers(headers)
             .pagination(self.pagination.pagination().clone())
-            .set_filter(self.filter.clone())
-            .set_sort(self.sort.clone())
-            .set_range(self.range.clone());
+            .filter(self.filter.clone())
+            .sort(self.sort.clone())
+            .range(self.range.clone())
+            .build();
 
         Ok(request)
     }

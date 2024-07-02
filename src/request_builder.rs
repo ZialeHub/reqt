@@ -1,11 +1,13 @@
 use reqwest::{header::HeaderMap, Method};
 use serde::Serialize;
+use std::sync::{Arc, Mutex};
 
 use crate::{
     filter::{Filter, FilterRule},
     pagination::{Pagination, RequestPagination},
     prelude::{PaginationRule, Query},
     range::{Range, RangeRule},
+    rate_limiter::RateLimiter,
     request::Request,
     request_url::RequestUrl,
     sort::{Sort, SortRule},
@@ -30,6 +32,7 @@ pub struct RequestBuilder<
     pub(crate) filter: F,
     pub(crate) sort: S,
     pub(crate) range: R,
+    pub(crate) rate_limiter: Arc<Mutex<RateLimiter>>,
 }
 
 impl<B: Serialize + Clone, P: Pagination, F: Filter, S: Sort, R: Range>
@@ -37,7 +40,7 @@ impl<B: Serialize + Clone, P: Pagination, F: Filter, S: Sort, R: Range>
 where
     Query: for<'a> From<&'a F> + for<'a> From<&'a S> + for<'a> From<&'a R>,
 {
-    pub fn new(request_url: RequestUrl) -> Self {
+    pub fn new(request_url: RequestUrl, rate_limiter: Arc<Mutex<RateLimiter>>) -> Self {
         Self {
             method: Method::GET,
             request_url,
@@ -47,6 +50,7 @@ where
             filter: F::default(),
             sort: S::default(),
             range: R::default(),
+            rate_limiter,
         }
     }
 
@@ -95,6 +99,7 @@ where
             filter: self.filter,
             sort: self.sort,
             range: self.range,
+            rate_limiter: self.rate_limiter,
         }
     }
 }
