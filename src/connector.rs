@@ -14,7 +14,7 @@ use crate::{
     prelude::{ApiBuilder, RequestBuilder},
     query::Query,
     range::{Range, RangeRule},
-    rate_limiter::RateLimiter,
+    rate_limiter::{RateLimiter, TimePeriod},
     request::Request,
     request_url::RequestUrl,
     sort::{Sort, SortRule},
@@ -174,6 +174,16 @@ where
         max: impl ToString,
     ) -> Self {
         self.range = self.range.range(property, min, max);
+        self
+    }
+
+    pub fn rate_limit(self, rate_limit: u32) -> Self {
+        self.rate_limit.write().unwrap().limit = rate_limit;
+        self
+    }
+
+    pub fn rate_period(self, rate_period: TimePeriod) -> Self {
+        self.rate_limit.write().unwrap().period = rate_period;
         self
     }
 }
