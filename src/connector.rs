@@ -1,7 +1,7 @@
 use std::{
     fmt::Display,
     future::Future,
-    sync::{Arc, Mutex},
+    sync::{Arc, RwLock},
 };
 
 use reqwest::{header::HeaderMap, Method};
@@ -105,7 +105,7 @@ pub struct Api<
     pub(crate) filter: F,
     pub(crate) sort: S,
     pub(crate) range: R,
-    pub(crate) rate_limit: Arc<Mutex<RateLimiter>>,
+    pub(crate) rate_limit: Arc<RwLock<RateLimiter>>,
 }
 
 impl<P: Pagination, F: Filter, S: Sort, R: Range> Api<P, F, S, R>

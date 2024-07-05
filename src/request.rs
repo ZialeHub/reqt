@@ -1,7 +1,7 @@
 use reqwest::{header::HeaderMap, Client, Method, StatusCode, Url};
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, RwLock};
 
 use crate::{
     error::{ApiError, Result},
@@ -44,7 +44,7 @@ pub struct Request<
     pub(crate) filter: F,
     pub(crate) sort: S,
     pub(crate) range: R,
-    pub(crate) rate_limiter: Arc<Mutex<RateLimiter>>,
+    pub(crate) rate_limiter: Arc<RwLock<RateLimiter>>,
 }
 
 impl<B: Serialize + Clone, P: Pagination, F: Filter, S: Sort, R: Range> Request<B, P, F, S, R>
@@ -67,7 +67,7 @@ where
             filter: F::default(),
             sort: S::default(),
             range: R::default(),
-            rate_limiter: Arc::new(Mutex::new(RateLimiter::default())),
+            rate_limiter: Arc::new(RwLock::new(RateLimiter::default())),
         }
     }
 
@@ -77,12 +77,12 @@ where
         T: DeserializeOwned + Serialize,
         B: DeserializeOwned + Serialize,
     {
-        self.rate_limiter.lock().unwrap().request();
+        self.rate_limiter.write().unwrap().request();
         let request = self.build_reqwest::<B>(self.body.clone())?;
         eprintln!("{:?}", request);
         let first_response = Self::execute_reqwest(&request).await?;
         self.rate_limiter
-            .lock()
+            .write()
             .unwrap()
             .update(first_response.headers());
         self.parse_response_array(request, first_response).await
@@ -225,7 +225,7 @@ where
 
             let next_page_response = Self::execute_reqwest(&next_request).await?;
             self.rate_limiter
-                .lock()
+                .write()
                 .unwrap()
                 .update(next_page_response.headers());
 

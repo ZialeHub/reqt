@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, RwLock};
 
 use crate::{
     connector::{Api, AuthorizationType},
@@ -107,7 +107,7 @@ where
             filter: self.filter,
             sort: self.sort,
             range: self.range,
-            rate_limit: Arc::new(Mutex::new(self.rate_limiter)),
+            rate_limit: Arc::new(RwLock::new(self.rate_limiter)),
         }
     }
 }
