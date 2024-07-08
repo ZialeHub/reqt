@@ -144,25 +144,6 @@ where
             .await
             .map_err(ApiError::ReqwestExecute)?;
 
-        // let remaining_secondly_calls = response
-        //     .headers()
-        //     .get("X-Secondly-RateLimit-Remaining")
-        //     .and_then(|v| v.to_str().ok())
-        //     .and_then(|s| s.parse::<u8>().ok());
-        //
-        // if remaining_secondly_calls == Some(0) {
-        //     let time = std::time::Duration::from_millis(1100);
-        //     tokio::time::sleep(time).await;
-        // }
-        // if response.status() == StatusCode::TOO_MANY_REQUESTS {
-        //     let time = std::time::Duration::from_millis(1100);
-        //     tokio::time::sleep(time).await;
-        //     response = client
-        //         .execute(request.try_clone().ok_or(ApiError::ReqwestClone)?)
-        //         .await
-        //         .map_err(ApiError::ReqwestExecute)?;
-        // }
-
         match response.status() {
             StatusCode::OK
             | StatusCode::CREATED
