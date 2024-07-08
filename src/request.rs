@@ -77,14 +77,17 @@ where
         T: DeserializeOwned + Serialize,
         B: DeserializeOwned + Serialize,
     {
-        self.rate_limiter.write().unwrap().request();
+        match self.rate_limiter.write() {
+            Ok(mut rate) => rate.request(),
+            Err(e) => eprintln!("Rate limiter error: {:?}", e),
+        }
         let request = self.build_reqwest::<B>(self.body.clone())?;
         eprintln!("{:?}", request);
         let first_response = Self::execute_reqwest(&request).await?;
-        self.rate_limiter
-            .write()
-            .unwrap()
-            .update(first_response.headers());
+        match self.rate_limiter.write() {
+            Ok(mut rate) => rate.update(first_response.headers()),
+            Err(e) => eprintln!("Rate limiter error: {:?}", e),
+        }
         self.parse_response_array(request, first_response).await
     }
 
@@ -224,10 +227,10 @@ where
             let next_request = Self::build_next_reqwest(&request, next_url)?;
 
             let next_page_response = Self::execute_reqwest(&next_request).await?;
-            self.rate_limiter
-                .write()
-                .unwrap()
-                .update(next_page_response.headers());
+            match self.rate_limiter.write() {
+                Ok(mut rate) => rate.update(next_page_response.headers()),
+                Err(e) => eprintln!("Rate limiter error: {:?}", e),
+            }
 
             match &mut json_values {
                 Value::Array(a) => {

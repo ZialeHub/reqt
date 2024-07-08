@@ -178,12 +178,18 @@ where
     }
 
     pub fn rate_limit(self, rate_limit: u32) -> Self {
-        self.rate_limit.write().unwrap().limit = rate_limit;
+        match self.rate_limit.write() {
+            Ok(mut rate) => rate.limit = rate_limit,
+            Err(e) => eprintln!("Rate limiter error: {:?}", e),
+        }
         self
     }
 
     pub fn rate_period(self, rate_period: TimePeriod) -> Self {
-        self.rate_limit.write().unwrap().period = rate_period;
+        match self.rate_limit.write() {
+            Ok(mut rate) => rate.period = rate_period,
+            Err(e) => eprintln!("Rate limiter error: {:?}", e),
+        }
         self
     }
 }
