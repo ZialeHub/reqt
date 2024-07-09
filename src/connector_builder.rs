@@ -1,9 +1,12 @@
+use std::sync::{Arc, RwLock};
+
 use crate::{
     connector::{Api, AuthorizationType},
     filter::{Filter, FilterRule},
     pagination::{Pagination, PaginationRule, RequestPagination},
     prelude::Query,
     range::{Range, RangeRule},
+    rate_limiter::{RateLimiter, TimePeriod},
     sort::{Sort, SortRule},
 };
 
@@ -22,6 +25,7 @@ pub struct ApiBuilder<
     pub(crate) filter: F,
     pub(crate) sort: S,
     pub(crate) range: R,
+    pub(crate) rate_limiter: RateLimiter,
 }
 
 impl<P: Pagination, F: Filter, S: Sort, R: Range> ApiBuilder<P, F, S, R>
@@ -36,6 +40,7 @@ where
             filter: F::default(),
             sort: S::default(),
             range: R::default(),
+            rate_limiter: RateLimiter::new(1, TimePeriod::Second),
         }
     }
 
@@ -84,6 +89,16 @@ where
         self
     }
 
+    pub fn limit(mut self, limit: u32) -> Self {
+        self.rate_limiter.limit = limit;
+        self
+    }
+
+    pub fn limit_period(mut self, period: TimePeriod) -> Self {
+        self.rate_limiter.period = period;
+        self
+    }
+
     pub fn build(self) -> Api<P, F, S, R> {
         Api {
             authorization: self.authorization,
@@ -92,6 +107,7 @@ where
             filter: self.filter,
             sort: self.sort,
             range: self.range,
+            rate_limit: Arc::new(RwLock::new(self.rate_limiter)),
         }
     }
 }
