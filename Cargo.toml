@@ -1,4 +1,4 @@
-workspace = { members = ["proc-macro-authorization"] }
+workspace = { members = [ "authorization-derive", "filter-derive", "pagination-derive", "range-derive", "sort-derive"] }
 [package]
 name = "api_manager"
 version = "0.1.0"
@@ -7,14 +7,21 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-reqwest = { version = "0.12.4", features = ["json"] }
+reqwest = { version = "0.12.5", features = ["json"] }
 tokio = { version = "1.38.0", features = ["full"] }
 serde = { version = "1.0.203", features = ["derive"] }
-serde_json = "1.0.117"
+serde_json = "1.0.120"
 thiserror = "1.0.61"
-url = "2.5.0"
+strum = { version = "0.26.3", features = ["derive"] }
+url = "2.5.2"
 base64 = "0.22.1"
-proc-macro-authorization = { path = "./proc-macro-authorization" }
+authorization-derive = { path = "./authorization-derive" }
+pagination-derive= { path = "./pagination-derive" }
+filter-derive= { path = "./filter-derive" }
+sort-derive= { path = "./sort-derive" }
+range-derive= { path = "./range-derive" }
+chrono = "0.4.19"
 
 [dev-dependencies]
 toml = "0.8.14"
+serial_test = "3.1.1"

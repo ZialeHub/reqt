@@ -28,8 +28,8 @@ pub enum ApiError {
     ReqwestClone,
     #[error("ReqwestBuilder: {0}")]
     ReqwestBuilder(#[source] reqwest::Error),
-    #[error("Wrong Payload Format: {0}")]
-    PayloadSerialization(#[from] serde_json::Error),
+    #[error("Wrong Body Format: {0}")]
+    BodySerialization(#[from] serde_json::Error),
     #[error("Wrong Url Format: {0}")]
     WrongUrlFormat(#[from] url::ParseError),
     #[error("Invalid Header Value: {0}")]

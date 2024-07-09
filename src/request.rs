@@ -1,49 +1,73 @@
 use reqwest::{header::HeaderMap, Client, Method, StatusCode, Url};
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
+use std::sync::{Arc, RwLock};
 
 use crate::{
     error::{ApiError, Result},
+    filter::{Filter, FilterRule},
     pagination::{Pagination, PaginationRule, RequestPagination},
+    prelude::Query,
+    range::{Range, RangeRule},
+    rate_limiter::RateLimiter,
     request_url::RequestUrl,
+    sort::{Sort, SortOrder, SortRule},
 };
 
 /// Structure to send requests to the API
 ///
 /// # Parameters
-/// * `P` - Payload type to be used in the request
+/// * `P` - body type to be used in the request
 /// * `U` - Pagination type to be used in the request
 ///
 /// # Attributes
 /// * method - HTTP method to be used in the request
 /// * request_url - URL to be used in the request
 /// * headers - Headers to be used in the request
-/// * payload - Payload to be used in the request
+/// * body - body to be used in the request
 /// * pagination - Pagination type to be used in the request
 #[derive(Debug, Clone)]
-pub struct Request<P: Serialize + Clone = (), U: Pagination = RequestPagination> {
+pub struct Request<
+    B: Serialize + Clone = (),
+    P: Pagination = RequestPagination,
+    F: Filter = FilterRule,
+    S: Sort = SortRule,
+    R: Range = RangeRule,
+> where
+    Query: for<'a> From<&'a F> + for<'a> From<&'a S> + for<'a> From<&'a R>,
+{
     pub(crate) method: Method,
     pub(crate) request_url: RequestUrl,
     pub(crate) headers: Option<HeaderMap>,
-    pub(crate) payload: Option<P>,
-    pub(crate) pagination: U,
+    pub(crate) body: Option<B>,
+    pub(crate) pagination: P,
+    pub(crate) filter: F,
+    pub(crate) sort: S,
+    pub(crate) range: R,
+    pub(crate) rate_limiter: Arc<RwLock<RateLimiter>>,
 }
 
-impl<P: Serialize + Clone, U: Pagination> Request<P, U> {
+impl<B: Serialize + Clone, P: Pagination, F: Filter, S: Sort, R: Range> Request<B, P, F, S, R>
+where
+    Query: for<'a> From<&'a F> + for<'a> From<&'a S> + for<'a> From<&'a R>,
+{
     /// Create a new request
     pub fn new(
         method: Method,
         request_url: RequestUrl,
         headers: Option<HeaderMap>,
-        payload: Option<P>,
-        pagination: U,
+        body: Option<B>,
     ) -> Self {
         Self {
             method,
             request_url,
             headers,
-            payload,
-            pagination,
+            body,
+            pagination: P::default(),
+            filter: F::default(),
+            sort: S::default(),
+            range: R::default(),
+            rate_limiter: Arc::new(RwLock::new(RateLimiter::default())),
         }
     }
 
@@ -51,27 +75,38 @@ impl<P: Serialize + Clone, U: Pagination> Request<P, U> {
     pub async fn send<T>(&mut self) -> Result<T>
     where
         T: DeserializeOwned + Serialize,
-        P: DeserializeOwned + Serialize,
+        B: DeserializeOwned + Serialize,
     {
-        let request = self.build_reqwest::<P>(self.payload.clone())?;
+        match self.rate_limiter.write() {
+            Ok(mut rate) => rate.request(),
+            Err(e) => eprintln!("Rate limiter error: {:?}", e),
+        }
+        let request = self.build_reqwest::<B>(self.body.clone())?;
+        eprintln!("{:?}", request);
         let first_response = Self::execute_reqwest(&request).await?;
+        match self.rate_limiter.write() {
+            Ok(mut rate) => rate.update(first_response.headers()),
+            Err(e) => eprintln!("Rate limiter error: {:?}", e),
+        }
         self.parse_response_array(request, first_response).await
     }
 
-    fn build_reqwest<T>(&self, payload: Option<T>) -> Result<reqwest::Request>
+    fn build_reqwest<T>(&self, body: Option<T>) -> Result<reqwest::Request>
     where
         T: DeserializeOwned + Serialize,
     {
-        let body: Vec<u8> = match payload {
+        let body: Vec<u8> = match body {
             Some(p) => match serde_json::to_string(&p) {
                 Ok(s) => s.as_bytes().to_owned(),
-                Err(e) => return Err(ApiError::PayloadSerialization(e)),
+                Err(e) => return Err(ApiError::BodySerialization(e)),
             },
             None => Vec::new(),
         };
 
         let client = Client::new();
-        let url = self.request_url.as_url(&self.pagination)?;
+        let url =
+            self.request_url
+                .as_url(&self.pagination, &self.filter, &self.sort, &self.range)?;
         let mut request_builder = client.request(self.method.clone(), url).body(body);
         if let Some(headers) = &self.headers {
             request_builder = request_builder.headers(headers.clone());
@@ -104,29 +139,10 @@ impl<P: Serialize + Clone, U: Pagination> Request<P, U> {
 
     async fn execute_reqwest(request: &reqwest::Request) -> Result<reqwest::Response> {
         let client = Client::new();
-        let mut response = client
+        let response = client
             .execute(request.try_clone().ok_or(ApiError::ReqwestClone)?)
             .await
             .map_err(ApiError::ReqwestExecute)?;
-
-        let remaining_secondly_calls = response
-            .headers()
-            .get("X-Secondly-RateLimit-Remaining")
-            .and_then(|v| v.to_str().ok())
-            .and_then(|s| s.parse::<u8>().ok());
-
-        if remaining_secondly_calls == Some(0) {
-            let time = std::time::Duration::from_millis(1100);
-            tokio::time::sleep(time).await;
-        }
-        if response.status() == StatusCode::TOO_MANY_REQUESTS {
-            let time = std::time::Duration::from_millis(1100);
-            tokio::time::sleep(time).await;
-            response = client
-                .execute(request.try_clone().ok_or(ApiError::ReqwestClone)?)
-                .await
-                .map_err(ApiError::ReqwestExecute)?;
-        }
 
         match response.status() {
             StatusCode::OK
@@ -180,16 +196,22 @@ impl<P: Serialize + Clone, U: Pagination> Request<P, U> {
         T: DeserializeOwned + Serialize,
     {
         let page_count =
-            Self::get_page_count(first_response.headers(), self.pagination.get_pagination());
+            Self::get_page_count(first_response.headers(), self.pagination.pagination());
         self.pagination.next();
         let mut json_values = Value::Array(Self::parse_response(first_response).await?);
 
         for _ in 1..page_count {
-            let next_url = self.request_url.as_url(&self.pagination)?;
+            let next_url =
+                self.request_url
+                    .as_url(&self.pagination, &self.filter, &self.sort, &self.range)?;
 
             let next_request = Self::build_next_reqwest(&request, next_url)?;
 
             let next_page_response = Self::execute_reqwest(&next_request).await?;
+            match self.rate_limiter.write() {
+                Ok(mut rate) => rate.update(next_page_response.headers()),
+                Err(e) => eprintln!("Rate limiter error: {:?}", e),
+            }
 
             match &mut json_values {
                 Value::Array(a) => {
@@ -206,7 +228,78 @@ impl<P: Serialize + Clone, U: Pagination> Request<P, U> {
 
     /// Pagination setter to override the Api pagination
     pub fn pagination(mut self, pagination: PaginationRule) -> Self {
-        self.pagination = self.pagination.pagination(pagination);
+        self.pagination = self.pagination.set_pagination(pagination);
+        self
+    }
+
+    pub fn set_filter(mut self, filter: F) -> Self {
+        self.filter = filter;
+        self
+    }
+
+    pub fn set_sort(mut self, sort: S) -> Self {
+        self.sort = sort;
+        self
+    }
+
+    pub fn set_range(mut self, range: R) -> Self {
+        self.range = range;
+        self
+    }
+
+    pub fn pattern_filter(mut self, pattern: impl ToString) -> Self {
+        self.filter = self.filter.pattern(pattern);
+        self
+    }
+
+    pub fn filter<T: IntoIterator>(mut self, property: impl ToString, value: T) -> Self
+    where
+        T::Item: ToString,
+    {
+        self.filter = self.filter.filter(property, value);
+        self
+    }
+
+    pub fn filter_with<T: IntoIterator>(
+        mut self,
+        property: impl ToString,
+        filter: impl ToString,
+        value: T,
+    ) -> Self
+    where
+        T::Item: ToString,
+    {
+        self.filter = self.filter.filter_with(property, filter, value);
+        self
+    }
+
+    pub fn pattern_sort(mut self, pattern: impl ToString) -> Self {
+        self.sort = self.sort.pattern(pattern);
+        self
+    }
+
+    pub fn sort(mut self, property: impl ToString) -> Self {
+        self.sort = self.sort.sort(property);
+        self
+    }
+
+    pub fn sort_with(mut self, property: impl ToString, order: SortOrder) -> Self {
+        self.sort = self.sort.sort_with(property, order);
+        self
+    }
+
+    pub fn pattern_range(mut self, pattern: impl ToString) -> Self {
+        self.range = self.range.pattern(pattern);
+        self
+    }
+
+    pub fn range(
+        mut self,
+        property: impl ToString,
+        min: impl ToString,
+        max: impl ToString,
+    ) -> Self {
+        self.range = self.range.range(property, min, max);
         self
     }
 }

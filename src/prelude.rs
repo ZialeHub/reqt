@@ -1,8 +1,16 @@
 pub use crate::connector::{Api, Authorization, AuthorizationType, Connector};
 pub use crate::connector_builder::ApiBuilder;
 pub use crate::error::{ApiError, ConnectorError, ErrorContext, Result};
+pub use crate::filter::{Filter, FilterRule};
 pub use crate::pagination::{Pagination, PaginationRule, RequestPagination};
 pub use crate::query::Query;
+pub use crate::range::{Range, RangeRule};
 pub use crate::request::Request;
 pub use crate::request_builder::RequestBuilder;
 pub use crate::request_url::RequestUrl;
+pub use crate::sort::{Sort, SortOrder, SortRule};
+pub use authorization_derive::{ApiKey, Authorization, Basic, Bearer, Oauth2};
+pub use filter_derive::Filter;
+pub use pagination_derive::Pagination;
+pub use range_derive::Range;
+pub use sort_derive::Sort;
