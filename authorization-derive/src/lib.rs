@@ -2,7 +2,7 @@ extern crate proc_macro;
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::Attribute;
+use syn::{Attribute, Ident, Type, Variant};
 
 /// The derive macro #[derive(Authorization)] is used to implement the Authorization trait by default for a struct.
 /// The trait will not add any authorization to the Api by default.
@@ -44,20 +44,20 @@ pub fn apikey_derive(input: TokenStream) -> TokenStream {
     impl_apikey_derive(&ast)
 }
 
-/// Only impl the Authorization trait for the struct, with the default implementation.
-fn impl_authorization_derive(ast: &syn::DeriveInput) -> TokenStream {
-    let name = &ast.ident;
-    let gen = quote! {
-        impl Authorization for #name {}
-    };
-    gen.into()
+/// The derive macro #[derive(Keycloak)] is used to implement the Authorization trait for a struct.
+/// The trait will add the AuthorizationType authorization to the Api and will use the Keycloak service.
+#[proc_macro_derive(Keycloak, attributes(auth_type, pagination, filter, sort, range))]
+pub fn keycloak_derive(input: TokenStream) -> TokenStream {
+    let ast = syn::parse(input).unwrap();
+    impl_keycloak_derive(&ast)
 }
 
-/// Impl the Authorization trait for the struct, with the OAuth2 implementation.
-/// The trait accept the pagination, filter, sort and range types as attributes. (Optionals)
-/// We use the AST to find the attributes (pagination, filter, sort and range) and parse them to the correct type.
-/// If the attribute is not found, we use the default type.
-fn impl_oauth2_derive(ast: &syn::DeriveInput) -> TokenStream {
+/// Function to parse generic types for the Authorization implementation
+/// - Pagination
+/// - Filter
+/// - Sort
+/// - Range
+fn get_attribute_types(ast: &syn::DeriveInput) -> (Type, Type, Type, Type) {
     let pagination = ast
         .attrs
         .iter()
@@ -126,7 +126,25 @@ fn impl_oauth2_derive(ast: &syn::DeriveInput) -> TokenStream {
             }
         })
         .unwrap_or_else(|| syn::parse_str::<syn::Type>("RangeRule").unwrap());
+    (pagination, filter, sort, range)
+}
+
+/// Only impl the Authorization trait for the struct, with the default implementation.
+fn impl_authorization_derive(ast: &syn::DeriveInput) -> TokenStream {
     let name = &ast.ident;
+    let gen = quote! {
+        impl Authorization for #name {}
+    };
+    gen.into()
+}
+
+/// Impl the Authorization trait for the struct, with the OAuth2 implementation.
+/// The trait accept the pagination, filter, sort and range types as attributes. (Optionals)
+/// We use the AST to find the attributes (pagination, filter, sort and range) and parse them to the correct type.
+/// If the attribute is not found, we use the default type.
+fn impl_oauth2_derive(ast: &syn::DeriveInput) -> TokenStream {
+    let name = &ast.ident;
+    let (pagination, filter, sort, range) = get_attribute_types(ast);
     let gen = quote! {
         impl Authorization<#pagination, #filter, #sort, #range> for #name {
             async fn connect(&self, url: &str) -> Result<Api<#pagination, #filter, #sort, #range>> {
@@ -179,75 +197,8 @@ fn impl_oauth2_derive(ast: &syn::DeriveInput) -> TokenStream {
 /// We use the AST to find the attributes (pagination, filter, sort and range) and parse them to the correct type.
 /// If the attribute is not found, we use the default type.
 fn impl_basic_derive(ast: &syn::DeriveInput) -> TokenStream {
-    let pagination = ast
-        .attrs
-        .iter()
-        .find(|attr| attr.path().is_ident("pagination"))
-        .and_then(|attr| {
-            if let Attribute {
-                meta: syn::Meta::List(syn::MetaList { tokens: token, .. }),
-                ..
-            } = attr
-            {
-                let name = token.clone().into_iter().next().unwrap().to_string();
-                syn::parse_str::<syn::Type>(&name).ok()
-            } else {
-                None
-            }
-        })
-        .unwrap_or_else(|| syn::parse_str::<syn::Type>("RequestPagination").unwrap());
-    let filter = ast
-        .attrs
-        .iter()
-        .find(|attr| attr.path().is_ident("filter"))
-        .and_then(|attr| {
-            if let Attribute {
-                meta: syn::Meta::List(syn::MetaList { tokens: token, .. }),
-                ..
-            } = attr
-            {
-                let name = token.clone().into_iter().next().unwrap().to_string();
-                syn::parse_str::<syn::Type>(&name).ok()
-            } else {
-                None
-            }
-        })
-        .unwrap_or_else(|| syn::parse_str::<syn::Type>("FilterRule").unwrap());
-    let sort = ast
-        .attrs
-        .iter()
-        .find(|attr| attr.path().is_ident("sort"))
-        .and_then(|attr| {
-            if let Attribute {
-                meta: syn::Meta::List(syn::MetaList { tokens: token, .. }),
-                ..
-            } = attr
-            {
-                let name = token.clone().into_iter().next().unwrap().to_string();
-                syn::parse_str::<syn::Type>(&name).ok()
-            } else {
-                None
-            }
-        })
-        .unwrap_or_else(|| syn::parse_str::<syn::Type>("SortRule").unwrap());
-    let range = ast
-        .attrs
-        .iter()
-        .find(|attr| attr.path().is_ident("range"))
-        .and_then(|attr| {
-            if let Attribute {
-                meta: syn::Meta::List(syn::MetaList { tokens: token, .. }),
-                ..
-            } = attr
-            {
-                let name = token.clone().into_iter().next().unwrap().to_string();
-                syn::parse_str::<syn::Type>(&name).ok()
-            } else {
-                None
-            }
-        })
-        .unwrap_or_else(|| syn::parse_str::<syn::Type>("RangeRule").unwrap());
     let name = &ast.ident;
+    let (pagination, filter, sort, range) = get_attribute_types(ast);
     let gen = quote! {
         impl Authorization<#pagination, #filter, #sort, #range> for #name {
             async fn connect(&self, url: &str) -> Result<Api<#pagination, #filter, #sort, #range>> {
@@ -267,75 +218,8 @@ fn impl_basic_derive(ast: &syn::DeriveInput) -> TokenStream {
 /// We use the AST to find the attributes (pagination, filter, sort and range) and parse them to the correct type.
 /// If the attribute is not found, we use the default type.
 fn impl_bearer_derive(ast: &syn::DeriveInput) -> TokenStream {
-    let pagination = ast
-        .attrs
-        .iter()
-        .find(|attr| attr.path().is_ident("pagination"))
-        .and_then(|attr| {
-            if let Attribute {
-                meta: syn::Meta::List(syn::MetaList { tokens: token, .. }),
-                ..
-            } = attr
-            {
-                let name = token.clone().into_iter().next().unwrap().to_string();
-                syn::parse_str::<syn::Type>(&name).ok()
-            } else {
-                None
-            }
-        })
-        .unwrap_or_else(|| syn::parse_str::<syn::Type>("RequestPagination").unwrap());
-    let filter = ast
-        .attrs
-        .iter()
-        .find(|attr| attr.path().is_ident("filter"))
-        .and_then(|attr| {
-            if let Attribute {
-                meta: syn::Meta::List(syn::MetaList { tokens: token, .. }),
-                ..
-            } = attr
-            {
-                let name = token.clone().into_iter().next().unwrap().to_string();
-                syn::parse_str::<syn::Type>(&name).ok()
-            } else {
-                None
-            }
-        })
-        .unwrap_or_else(|| syn::parse_str::<syn::Type>("FilterRule").unwrap());
-    let sort = ast
-        .attrs
-        .iter()
-        .find(|attr| attr.path().is_ident("sort"))
-        .and_then(|attr| {
-            if let Attribute {
-                meta: syn::Meta::List(syn::MetaList { tokens: token, .. }),
-                ..
-            } = attr
-            {
-                let name = token.clone().into_iter().next().unwrap().to_string();
-                syn::parse_str::<syn::Type>(&name).ok()
-            } else {
-                None
-            }
-        })
-        .unwrap_or_else(|| syn::parse_str::<syn::Type>("SortRule").unwrap());
-    let range = ast
-        .attrs
-        .iter()
-        .find(|attr| attr.path().is_ident("range"))
-        .and_then(|attr| {
-            if let Attribute {
-                meta: syn::Meta::List(syn::MetaList { tokens: token, .. }),
-                ..
-            } = attr
-            {
-                let name = token.clone().into_iter().next().unwrap().to_string();
-                syn::parse_str::<syn::Type>(&name).ok()
-            } else {
-                None
-            }
-        })
-        .unwrap_or_else(|| syn::parse_str::<syn::Type>("RangeRule").unwrap());
     let name = &ast.ident;
+    let (pagination, filter, sort, range) = get_attribute_types(ast);
     let gen = quote! {
         impl Authorization<#pagination, #filter, #sort, #range> for #name {
             async fn connect(&self, url: &str) -> Result<Api<#pagination, #filter, #sort, #range>> {
@@ -354,75 +238,8 @@ fn impl_bearer_derive(ast: &syn::DeriveInput) -> TokenStream {
 /// We use the AST to find the attributes (pagination, filter, sort and range) and parse them to the correct type.
 /// If the attribute is not found, we use the default type.
 fn impl_apikey_derive(ast: &syn::DeriveInput) -> TokenStream {
-    let pagination = ast
-        .attrs
-        .iter()
-        .find(|attr| attr.path().is_ident("pagination"))
-        .and_then(|attr| {
-            if let Attribute {
-                meta: syn::Meta::List(syn::MetaList { tokens: token, .. }),
-                ..
-            } = attr
-            {
-                let name = token.clone().into_iter().next().unwrap().to_string();
-                syn::parse_str::<syn::Type>(&name).ok()
-            } else {
-                None
-            }
-        })
-        .unwrap_or_else(|| syn::parse_str::<syn::Type>("RequestPagination").unwrap());
-    let filter = ast
-        .attrs
-        .iter()
-        .find(|attr| attr.path().is_ident("filter"))
-        .and_then(|attr| {
-            if let Attribute {
-                meta: syn::Meta::List(syn::MetaList { tokens: token, .. }),
-                ..
-            } = attr
-            {
-                let name = token.clone().into_iter().next().unwrap().to_string();
-                syn::parse_str::<syn::Type>(&name).ok()
-            } else {
-                None
-            }
-        })
-        .unwrap_or_else(|| syn::parse_str::<syn::Type>("FilterRule").unwrap());
-    let sort = ast
-        .attrs
-        .iter()
-        .find(|attr| attr.path().is_ident("sort"))
-        .and_then(|attr| {
-            if let Attribute {
-                meta: syn::Meta::List(syn::MetaList { tokens: token, .. }),
-                ..
-            } = attr
-            {
-                let name = token.clone().into_iter().next().unwrap().to_string();
-                syn::parse_str::<syn::Type>(&name).ok()
-            } else {
-                None
-            }
-        })
-        .unwrap_or_else(|| syn::parse_str::<syn::Type>("SortRule").unwrap());
-    let range = ast
-        .attrs
-        .iter()
-        .find(|attr| attr.path().is_ident("range"))
-        .and_then(|attr| {
-            if let Attribute {
-                meta: syn::Meta::List(syn::MetaList { tokens: token, .. }),
-                ..
-            } = attr
-            {
-                let name = token.clone().into_iter().next().unwrap().to_string();
-                syn::parse_str::<syn::Type>(&name).ok()
-            } else {
-                None
-            }
-        })
-        .unwrap_or_else(|| syn::parse_str::<syn::Type>("RangeRule").unwrap());
     let name = &ast.ident;
+    let (pagination, filter, sort, range) = get_attribute_types(ast);
     let gen = quote! {
         impl Authorization<#pagination, #filter, #sort, #range> for #name {
             async fn connect(&self, url: &str) -> Result<Api<#pagination, #filter, #sort, #range>> {
@@ -430,6 +247,122 @@ fn impl_apikey_derive(ast: &syn::DeriveInput) -> TokenStream {
                 let client = Client::new();
 
                 Ok(conector.apikey(&self.key).build())
+            }
+        }
+    };
+    gen.into()
+}
+
+/// Impl the Authorization trait for the struct, with the Keycloak implementation.
+fn impl_keycloak_derive(ast: &syn::DeriveInput) -> TokenStream {
+    let Some(auth_type) = ast
+        .attrs
+        .iter()
+        .find(|attr| attr.path().is_ident("auth_type"))
+        .and_then(|attr| {
+            if let Attribute {
+                meta: syn::Meta::List(syn::MetaList { tokens: token, .. }),
+                ..
+            } = attr
+            {
+                let name = token.clone().into_iter().next().unwrap().to_string();
+                syn::parse_str::<Variant>(&name).ok()
+            } else {
+                None
+            }
+        })
+    else {
+        return quote! {
+            compile_error!(
+                "You need to provide an AuthenticationType to Keycloak!"
+            );
+        }
+        .into();
+    };
+    let name = &ast.ident;
+    let (pagination, filter, sort, range) = get_attribute_types(ast);
+    let auth_variant = auth_type.ident;
+    match auth_variant.to_string().as_str() {
+        "None" | "Basic" | "Bearer" | "ApiKey" | "OAuth2" => keycloak_authorization_impl(
+            auth_variant.to_string(),
+            pagination,
+            filter,
+            sort,
+            range,
+            name,
+        ),
+        _ => {
+            return quote! {
+                compile_error!(
+                    "AuthorizationType must be None, Basic, Bearer, ApiKey or OAuth2 !"
+                );
+            }
+            .into();
+        }
+    }
+}
+
+/// Impl the Authorization trait for the struct, with the Keycloak implementation.
+fn keycloak_authorization_impl(
+    auth_type: String,
+    pagination: Type,
+    filter: Type,
+    sort: Type,
+    range: Type,
+    name: &Ident,
+) -> TokenStream {
+    let gen = quote! {
+        impl Authorization<#pagination, #filter, #sort, #range> for #name {
+            async fn connect(&self, url: &str) -> Result<Api<#pagination, #filter, #sort, #range>> {
+                let connector = ApiBuilder::new(url);
+                let client = Client::new();
+
+                let auth_header = format!(
+                    "Basic {}",
+                    general_purpose::STANDARD_NO_PAD.encode(format!("{}:{}", &self.client_id, &self.client_secret))
+                );
+                let mut params = HashMap::new();
+                params.insert("grant_type", "password");
+                params.insert("username", &self.user_login);
+                params.insert("password", &self.user_pass);
+                match client
+                    .post(format!(
+                        "{}realms/{}/protocol/openid-connect/token",
+                        self.auth_endpoint, self.realm
+                    ))
+                    .header("Content-Type", "application/x-www-form-urlencoded")
+                    .header("Authorization", auth_header)
+                    .form(&params)
+                    .send()
+                    .await
+                {
+                    Ok(response) => {
+                        eprintln!("{:?}", response);
+                        match response.status() {
+                            StatusCode::OK
+                            | StatusCode::CREATED
+                            | StatusCode::ACCEPTED
+                            | StatusCode::NO_CONTENT => {}
+                            status => return Err(status.into()),
+                        }
+                        match response.text().await {
+                            Ok(response_text) => {
+                                let token: TokenResponse =
+                                    serde_json::from_str(&response_text).unwrap();
+                                Ok(connector.keycloak(match #auth_type {
+                                    "None" => AuthorizationType::None,
+                                    "Basic" => AuthorizationType::Basic(token.access_token),
+                                    "Bearer" => AuthorizationType::Bearer(token.access_token),
+                                    "ApiKey" => AuthorizationType::ApiKey(token.access_token),
+                                    "OAuth2" => AuthorizationType::OAuth2(token.access_token),
+                                    _ => return Err(ApiError::AuthorizationType),
+                                }).build())
+                            }
+                            Err(e) => Err(ApiError::ResponseToText(e)),
+                        }
+                    }
+                    Err(e) => Err(ApiError::ReqwestExecute(e)),
+                }
             }
         }
     };

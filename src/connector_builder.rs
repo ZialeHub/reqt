@@ -69,6 +69,11 @@ where
         self
     }
 
+    pub fn keycloak(mut self, auth_type: AuthorizationType) -> Self {
+        self.authorization = AuthorizationType::Keycloak(Box::new(auth_type));
+        self
+    }
+
     pub fn pagination(mut self, pagination: PaginationRule) -> Self {
         self.pagination = self.pagination.set_pagination(pagination);
         self
