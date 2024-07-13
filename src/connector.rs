@@ -40,6 +40,7 @@ pub enum AuthorizationType {
     // `refresh_token` into request headers
     // `Authorization: Bearer <refresh_token>`
     OAuth2(String),
+    Keycloak(Box<AuthorizationType>),
 }
 
 impl AuthorizationType {
@@ -76,6 +77,7 @@ impl Display for AuthorizationType {
             AuthorizationType::Bearer(token) | AuthorizationType::OAuth2(token) => {
                 write!(f, "Bearer {}", token)
             }
+            AuthorizationType::Keycloak(auth_type) => write!(f, "{}", auth_type.to_string()),
             _ => panic!("TokenType::None is not allowed"),
         }
     }

@@ -2,6 +2,8 @@ use reqwest::header::InvalidHeaderValue;
 
 #[derive(thiserror::Error, Debug)]
 pub enum ApiError {
+    #[error("Wrong Authorization Type")]
+    AuthorizationType,
     #[error("Not Found")]
     NotFound,
     #[error("Unauthorized")]

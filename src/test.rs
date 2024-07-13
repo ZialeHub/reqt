@@ -711,7 +711,7 @@ mod tests_api42_v2 {
             .get("users", Query::new())?
             .range("login", "zhabri", "ziale");
         let response = request.send::<Vec<User>>().await?;
-        assert_eq!(response.len(), 47);
+        assert_eq!(response.len(), 48);
         Ok(())
     }
 
@@ -795,6 +795,7 @@ mod tests_rest_country {
 mod tests_api42_v3 {
     use std::collections::HashMap;
 
+    use authorization_derive::Keycloak;
     use base64::{engine::general_purpose, Engine as _};
     use reqwest::{Client, StatusCode};
     use serde::{Deserialize, Serialize};
@@ -819,10 +820,11 @@ mod tests_api42_v3 {
         pub access_token: String,
     }
 
-    #[derive(Debug, Clone, Deserialize)]
+    #[derive(Debug, Clone, Deserialize, Keycloak)]
+    #[auth_type(OAuth2)]
     struct TestApiConnectorV3 {
-        uid: String,
-        secret: String,
+        client_id: String,
+        client_secret: String,
         auth_endpoint: String,
         realm: String,
         user_login: String,
@@ -832,53 +834,6 @@ mod tests_api42_v3 {
     #[derive(Debug, Clone, Deserialize)]
     struct Env {
         intra_v3: TestApiConnectorV3,
-    }
-
-    impl Authorization for TestApiConnectorV3 {
-        async fn connect(&self, url: &str) -> Result<Api<RequestPagination>> {
-            let connector = ApiBuilder::new(url);
-            let client = Client::new();
-
-            let auth_header = format!(
-                "Basic {}",
-                general_purpose::STANDARD_NO_PAD.encode(format!("{}:{}", &self.uid, &self.secret))
-            );
-            let mut params = HashMap::new();
-            params.insert("grant_type", "password");
-            params.insert("username", &self.user_login);
-            params.insert("password", &self.user_pass);
-            match client
-                .post(format!(
-                    "{}realms/{}/protocol/openid-connect/token",
-                    self.auth_endpoint, self.realm
-                ))
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .header("Authorization", auth_header)
-                .form(&params)
-                .send()
-                .await
-            {
-                Ok(response) => {
-                    eprintln!("{:?}", response);
-                    match response.status() {
-                        StatusCode::OK
-                        | StatusCode::CREATED
-                        | StatusCode::ACCEPTED
-                        | StatusCode::NO_CONTENT => {}
-                        status => return Err(status.into()),
-                    }
-                    match response.text().await {
-                        Ok(response_text) => {
-                            let token: TokenResponse =
-                                serde_json::from_str(&response_text).unwrap();
-                            Ok(connector.bearer(token.access_token).build())
-                        }
-                        Err(e) => Err(ApiError::ResponseToText(e)),
-                    }
-                }
-                Err(e) => Err(ApiError::ReqwestExecute(e)),
-            }
-        }
     }
 
     #[derive(Debug, Clone, Serialize, Deserialize)]
