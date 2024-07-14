@@ -69,6 +69,11 @@ where
         self
     }
 
+    pub fn oidc(mut self, token: impl ToString) -> Self {
+        self.authorization = AuthorizationType::OIDC(token.to_string());
+        self
+    }
+
     pub fn keycloak(mut self, auth_type: AuthorizationType) -> Self {
         self.authorization = AuthorizationType::Keycloak(Box::new(auth_type));
         self

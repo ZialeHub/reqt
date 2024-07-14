@@ -41,6 +41,7 @@ pub enum AuthorizationType {
     // `Authorization: Bearer <refresh_token>`
     OAuth2(String),
     Keycloak(Box<AuthorizationType>),
+    OIDC(String),
 }
 
 impl AuthorizationType {
@@ -74,7 +75,9 @@ impl Display for AuthorizationType {
         match self {
             AuthorizationType::Basic(token) => write!(f, "Basic {}", token),
             AuthorizationType::ApiKey(token) => write!(f, "{}", token),
-            AuthorizationType::Bearer(token) | AuthorizationType::OAuth2(token) => {
+            AuthorizationType::Bearer(token)
+            | AuthorizationType::OAuth2(token)
+            | AuthorizationType::OIDC(token) => {
                 write!(f, "Bearer {}", token)
             }
             AuthorizationType::Keycloak(auth_type) => write!(f, "{}", auth_type.to_string()),

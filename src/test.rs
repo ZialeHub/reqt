@@ -16,19 +16,14 @@ mod tests_api42_v2 {
         connector
     }
 
-    #[derive(Debug, Clone, Deserialize)]
-    struct TokenResponse {
-        pub access_token: String,
-    }
-
     #[derive(Debug, Clone, Deserialize, Oauth2)]
     #[pagination(PaginationTest)]
     #[filter(FilterTest)]
     #[sort(SortTest)]
     #[range(RangeTest)]
     struct TestApiConnector {
-        uid: String,
-        secret: String,
+        client_id: String,
+        client_secret: String,
         auth_endpoint: String,
         scopes: Vec<String>,
     }
@@ -813,11 +808,6 @@ mod tests_api42_v3 {
     #[derive(Debug, Clone, Serialize, Deserialize)]
     struct Attendance {
         user_id: i32,
-    }
-
-    #[derive(Debug, Clone, Deserialize)]
-    struct TokenResponse {
-        pub access_token: String,
     }
 
     #[derive(Debug, Clone, Deserialize, Keycloak)]
