@@ -44,6 +44,14 @@ pub fn apikey_derive(input: TokenStream) -> TokenStream {
     impl_apikey_derive(&ast)
 }
 
+/// The derive macro #[derive(OIDC)] is used to implement the Authorization trait for a struct.
+/// The trait will add OIDC authorization to the Api.
+#[proc_macro_derive(OIDC, attributes(pagination, filter, sort, range))]
+pub fn oidc_derive(input: TokenStream) -> TokenStream {
+    let ast = syn::parse(input).unwrap();
+    impl_oidc_derive(&ast)
+}
+
 /// The derive macro #[derive(Keycloak)] is used to implement the Authorization trait for a struct.
 /// The trait will add the AuthorizationType authorization to the Api and will use the Keycloak service.
 #[proc_macro_derive(Keycloak, attributes(auth_type, pagination, filter, sort, range))]
@@ -145,7 +153,12 @@ fn impl_authorization_derive(ast: &syn::DeriveInput) -> TokenStream {
 fn impl_oauth2_derive(ast: &syn::DeriveInput) -> TokenStream {
     let name = &ast.ident;
     let (pagination, filter, sort, range) = get_attribute_types(ast);
+    let token_struct_name = syn::Ident::new(&format!("{}TokenOAuth2", name), name.span());
     let gen = quote! {
+        #[derive(Deserialize)]
+        struct #token_struct_name {
+            access_token: String,
+        }
         impl Authorization<#pagination, #filter, #sort, #range> for #name {
             async fn connect(&self, url: &str) -> Result<Api<#pagination, #filter, #sort, #range>> {
                 let connector = ApiBuilder::new(url);
@@ -157,8 +170,8 @@ fn impl_oauth2_derive(ast: &syn::DeriveInput) -> TokenStream {
                     .fold(String::new(), |acc, scope| format!("{} {}", acc, scope));
                 let mut params = HashMap::new();
                 params.insert("grant_type", "client_credentials");
-                params.insert("client_id", &self.uid);
-                params.insert("client_secret", &self.secret);
+                params.insert("client_id", &self.client_id);
+                params.insert("client_secret", &self.client_secret);
                 params.insert("scope", &scopes);
                 match client
                     .post(&self.auth_endpoint)
@@ -177,7 +190,7 @@ fn impl_oauth2_derive(ast: &syn::DeriveInput) -> TokenStream {
                         }
                         match response.text().await {
                             Ok(response_text) => {
-                                let token: TokenResponse =
+                                let token: #token_struct_name =
                                     serde_json::from_str(&response_text).unwrap();
                                 Ok(connector.oauth2(token.access_token).build())
                             }
@@ -253,6 +266,65 @@ fn impl_apikey_derive(ast: &syn::DeriveInput) -> TokenStream {
     gen.into()
 }
 
+/// Impl the Authorization trait for the struct, with the OIDC implementation.
+/// The trait accept the pagination, filter, sort and range types as attributes. (Optionals)
+/// We use the AST to find the attributes (pagination, filter, sort and range) and parse them to the correct type.
+/// If the attribute is not found, we use the default type.
+fn impl_oidc_derive(ast: &syn::DeriveInput) -> TokenStream {
+    let name = &ast.ident;
+    let (pagination, filter, sort, range) = get_attribute_types(ast);
+    let token_struct_name = syn::Ident::new(&format!("{}TokenOIDC", name), name.span());
+    let gen = quote! {
+        #[derive(Deserialize)]
+        struct #token_struct_name {
+            access_token: String,
+        }
+        impl Authorization<#pagination, #filter, #sort, #range> for #name {
+            async fn connect(&self, url: &str) -> Result<Api<#pagination, #filter, #sort, #range>> {
+                let connector = ApiBuilder::new(url);
+                let client = Client::new();
+
+                let scopes = self
+                    .scopes
+                    .iter()
+                    .fold(String::new(), |acc, scope| format!("{} {}", acc, scope));
+                let mut params = HashMap::new();
+                params.insert("grant_type", "client_credentials");
+                params.insert("client_id", &self.client_id);
+                params.insert("client_secret", &self.client_secret);
+                params.insert("scope", &scopes);
+                match client
+                    .post(&self.auth_endpoint)
+                    .header("Content-Type", "application/x-www-form-urlencoded")
+                    .form(&params)
+                    .send()
+                    .await
+                {
+                    Ok(response) => {
+                        match response.status() {
+                            StatusCode::OK
+                            | StatusCode::CREATED
+                            | StatusCode::ACCEPTED
+                            | StatusCode::NO_CONTENT => {}
+                            status => return Err(status.into()),
+                        }
+                        match response.text().await {
+                            Ok(response_text) => {
+                                let token: #token_struct_name =
+                                    serde_json::from_str(&response_text).unwrap();
+                                Ok(connector.oidc(token.access_token).build())
+                            }
+                            Err(e) => Err(ApiError::ResponseToText(e)),
+                        }
+                    }
+                    Err(e) => Err(ApiError::ReqwestExecute(e)),
+                }
+            }
+        }
+    };
+    gen.into()
+}
+
 /// Impl the Authorization trait for the struct, with the Keycloak implementation.
 fn impl_keycloak_derive(ast: &syn::DeriveInput) -> TokenStream {
     let Some(auth_type) = ast
@@ -311,7 +383,12 @@ fn keycloak_authorization_impl(
     range: Type,
     name: &Ident,
 ) -> TokenStream {
+    let token_struct_name = syn::Ident::new(&format!("{}TokenKeycloak", name), name.span());
     let gen = quote! {
+        #[derive(Deserialize)]
+        struct #token_struct_name {
+            access_token: String,
+        }
         impl Authorization<#pagination, #filter, #sort, #range> for #name {
             async fn connect(&self, url: &str) -> Result<Api<#pagination, #filter, #sort, #range>> {
                 let connector = ApiBuilder::new(url);
@@ -347,7 +424,7 @@ fn keycloak_authorization_impl(
                         }
                         match response.text().await {
                             Ok(response_text) => {
-                                let token: TokenResponse =
+                                let token: #token_struct_name =
                                     serde_json::from_str(&response_text).unwrap();
                                 Ok(connector.keycloak(match #auth_type {
                                     "None" => AuthorizationType::None,
