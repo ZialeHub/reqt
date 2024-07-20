@@ -28,6 +28,12 @@ jobs:
             ./target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
+      - name: Install dependencies
+        run: |
+          cargo install cargo-audit
+          cargo install cargo-outdated
+          cargo install cargo-machete
+
       - name: Display informations (rust, cargo)
         shell: bash
         run: |
@@ -38,9 +44,7 @@ jobs:
           rustc -V
 
       - name: vulnerabilities
-        run: |
-          cargo install cargo-audit
-          cargo audit
+        run: cargo audit
 
       - name: format
         if: always()
@@ -58,13 +62,9 @@ jobs:
 
       - name: outdated dependencies
         if: always()
-        run: |
-          cargo install cargo-outdated
-          cargo outdated --format json
+        run: cargo outdated --format json
 
       - name: unused dependencies (warn)
         if: always()
         continue-on-error: true
-        run: |
-          cargo install cargo-machete
-          cargo machete
+        run: cargo machete
