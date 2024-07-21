@@ -21,13 +21,13 @@ impl Display for TimePeriod {
         }
     }
 }
-impl Into<TimeDelta> for TimePeriod {
-    fn into(self) -> TimeDelta {
-        match self {
-            TimePeriod::Second => TimeDelta::seconds(1),
-            TimePeriod::Minute => TimeDelta::minutes(1),
-            TimePeriod::Hour => TimeDelta::hours(1),
-            TimePeriod::Day => TimeDelta::days(1),
+impl From<TimePeriod> for TimeDelta {
+    fn from(val: TimePeriod) -> Self {
+        match val {
+            TimePeriod::Second => Self::seconds(1),
+            TimePeriod::Minute => Self::minutes(1),
+            TimePeriod::Hour => Self::hours(1),
+            TimePeriod::Day => Self::days(1),
         }
     }
 }
@@ -62,7 +62,7 @@ impl RateLimiter {
             return;
         }
         for period in TimePeriod::iter() {
-            if let Some(limit) = headers.get(format!("x-{}-ratelimit-limit", period.to_string())) {
+            if let Some(limit) = headers.get(format!("x-{}-ratelimit-limit", period)) {
                 let Ok(limit) = limit.to_str().unwrap().parse::<u32>() else {
                     return;
                 };
