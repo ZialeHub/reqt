@@ -19,7 +19,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      # - uses: Swatinem/rust-cache@v2
       - uses: actions/cache@v4
         id: cargo_cache
         with:
@@ -27,6 +26,12 @@ jobs:
             ~/.cargo
             ./target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: copy .env
+        run: |
+          cat << EOF > .env
+          ${{ secrets.ENV }}
+          EOF
 
       - name: Install dependencies
         run: |
@@ -46,19 +51,19 @@ jobs:
       - name: vulnerabilities
         run: cargo audit
 
+      - name: release build
+        run: cargo build --release
+
+      - name: unit tests
+        run: cargo test --all-features --verbose
+
       - name: format
         if: always()
         run: cargo fmt --all -- --check
 
-      - name: release build
-        if: always()
-        run: cargo build --release
-
       - name: lints
+        if: always()
         run: cargo clippy --all --all-features --tests -- -D warnings
-
-      - name: unit tests
-        run: cargo test --all-features --verbose
 
       - name: outdated dependencies
         if: always()
@@ -66,5 +71,4 @@ jobs:
 
       - name: unused dependencies (warn)
         if: always()
-        continue-on-error: true
         run: cargo machete
