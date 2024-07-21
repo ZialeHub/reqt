@@ -58,17 +58,17 @@ jobs:
         run: cargo test --all-features --verbose
 
       - name: format
-        if: always()
+        if: ${{ ! cancelled() }}
         run: cargo fmt --all -- --check
 
       - name: lints
-        if: always()
+        if: ${{ ! cancelled() }}
         run: cargo clippy --all --all-features --tests -- -D warnings
 
       - name: outdated dependencies
-        if: always()
+        if: ${{ ! cancelled() }}
         run: cargo outdated --format json
 
       - name: unused dependencies (warn)
-        if: always()
+        if: ${{ ! cancelled() }}
         run: cargo machete
