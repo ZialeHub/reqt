@@ -1,0 +1,68 @@
+name: Rust CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  ci:
+    runs-on:
+      - self-hosted
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: copy .env
+        run: |
+          cat << EOF > .env
+          ${{ secrets.ENV }}
+          EOF
+
+      - name: Install dependencies
+        run: |
+          cargo install cargo-audit
+          cargo install cargo-outdated
+          cargo install cargo-machete
+
+      - name: Display informations (rust, cargo)
+        shell: bash
+        run: |
+          rustup -V
+          rustup toolchain list
+          rustup default
+          cargo -V
+          rustc -V
+
+      - name: vulnerabilities
+        run: cargo audit
+
+      - name: release build
+        run: cargo build --release
+
+      - name: unit tests
+        run: cargo test --all-features
+
+      - name: format
+        if: ${{ ! cancelled() }}
+        run: cargo fmt --all -- --check
+
+      - name: lints
+        if: ${{ ! cancelled() }}
+        run: cargo clippy --all --all-features --tests -- -D warnings
+
+      - name: outdated dependencies
+        if: ${{ ! cancelled() }}
+        run: cargo outdated
+
+      - name: unused dependencies (warn)
+        if: ${{ ! cancelled() }}
+        run: cargo machete

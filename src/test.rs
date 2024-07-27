@@ -706,7 +706,7 @@ mod tests_api42_v2 {
             .get("users", Query::new())?
             .range("login", "zhabri", "ziale");
         let response = request.send::<Vec<User>>().await?;
-        assert_eq!(response.len(), 48);
+        assert_eq!(response.len(), 49);
         Ok(())
     }
 

@@ -80,7 +80,7 @@ impl Display for AuthorizationType {
             | AuthorizationType::OIDC(token) => {
                 write!(f, "Bearer {}", token)
             }
-            AuthorizationType::Keycloak(auth_type) => write!(f, "{}", auth_type.to_string()),
+            AuthorizationType::Keycloak(auth_type) => write!(f, "{}", auth_type),
             _ => panic!("TokenType::None is not allowed"),
         }
     }

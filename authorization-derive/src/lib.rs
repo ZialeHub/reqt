@@ -363,14 +363,12 @@ fn impl_keycloak_derive(ast: &syn::DeriveInput) -> TokenStream {
             range,
             name,
         ),
-        _ => {
-            return quote! {
-                compile_error!(
-                    "AuthorizationType must be None, Basic, Bearer, ApiKey or OAuth2 !"
-                );
-            }
-            .into();
+        _ => quote! {
+            compile_error!(
+                "AuthorizationType must be None, Basic, Bearer, ApiKey or OAuth2 !"
+            );
         }
+        .into(),
     }
 }
 
