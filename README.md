@@ -1,5 +1,5 @@
 [![Rust CI](https://github.com/ryse-rs/reqt/actions/workflows/ci.yaml/badge.svg)](https://github.com/ryse-rs/reqt/actions/workflows/ci.yaml)
-[![codecov](https://codecov.io/gh/ryse-rs/reqt/graph/badge.svg?token=32E2V78DFP)](https://codecov.io/gh/ryse-rs/reqt)
+[![codecov](https://codecov.io/gh/ryse-rs/reqt/graph/badge.svg?token=RRR841D0NT)](https://codecov.io/gh/ryse-rs/reqt)
 
 **reqt** is an http request manager, providing high level features to connect to a web API and handle requests.
 
