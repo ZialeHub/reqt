@@ -4,7 +4,7 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{Attribute, Ident, Type, Variant};
 
-/// The derive macro #[derive(Authorization)] is used to implement the Authorization trait by default for a struct.
+/// The derive macro #[derive(Authorization)] is used to implement the Authorization trait by default for a struct.\
 /// The trait will not add any authorization to the Api by default.
 #[proc_macro_derive(Authorization, attributes(pagination, filter, sort, range))]
 pub fn authorization_derive(input: TokenStream) -> TokenStream {
@@ -12,7 +12,7 @@ pub fn authorization_derive(input: TokenStream) -> TokenStream {
     impl_authorization_derive(&ast)
 }
 
-/// The derive macro #[derive(Oauth2)] is used to implement the Authorization trait for a struct.
+/// The derive macro #[derive(Oauth2)] is used to implement the Authorization trait for a struct.\
 /// The trait will add OAuth2 authorization to the Api.
 #[proc_macro_derive(Oauth2, attributes(pagination, filter, sort, range))]
 pub fn oauth2_derive(input: TokenStream) -> TokenStream {
@@ -20,7 +20,7 @@ pub fn oauth2_derive(input: TokenStream) -> TokenStream {
     impl_oauth2_derive(&ast)
 }
 
-/// The derive macro #[derive(Basic)] is used to implement the Authorization trait for a struct.
+/// The derive macro #[derive(Basic)] is used to implement the Authorization trait for a struct.\
 /// The trait will add Basic authorization to the Api.
 #[proc_macro_derive(Basic, attributes(pagination, filter, sort, range))]
 pub fn basic_derive(input: TokenStream) -> TokenStream {
@@ -28,7 +28,7 @@ pub fn basic_derive(input: TokenStream) -> TokenStream {
     impl_basic_derive(&ast)
 }
 
-/// The derive macro #[derive(Bearer)] is used to implement the Authorization trait for a struct.
+/// The derive macro #[derive(Bearer)] is used to implement the Authorization trait for a struct.\
 /// The trait will add Bearer authorization to the Api.
 #[proc_macro_derive(Bearer, attributes(pagination, filter, sort, range))]
 pub fn bearer_derive(input: TokenStream) -> TokenStream {
@@ -36,7 +36,7 @@ pub fn bearer_derive(input: TokenStream) -> TokenStream {
     impl_bearer_derive(&ast)
 }
 
-/// The derive macro #[derive(ApiKey)] is used to implement the Authorization trait for a struct.
+/// The derive macro #[derive(ApiKey)] is used to implement the Authorization trait for a struct.\
 /// The trait will add ApiKey authorization to the Api.
 #[proc_macro_derive(ApiKey, attributes(pagination, filter, sort, range))]
 pub fn apikey_derive(input: TokenStream) -> TokenStream {
@@ -44,7 +44,7 @@ pub fn apikey_derive(input: TokenStream) -> TokenStream {
     impl_apikey_derive(&ast)
 }
 
-/// The derive macro #[derive(OIDC)] is used to implement the Authorization trait for a struct.
+/// The derive macro #[derive(OIDC)] is used to implement the Authorization trait for a struct.\
 /// The trait will add OIDC authorization to the Api.
 #[proc_macro_derive(OIDC, attributes(pagination, filter, sort, range))]
 pub fn oidc_derive(input: TokenStream) -> TokenStream {
@@ -52,7 +52,7 @@ pub fn oidc_derive(input: TokenStream) -> TokenStream {
     impl_oidc_derive(&ast)
 }
 
-/// The derive macro #[derive(Keycloak)] is used to implement the Authorization trait for a struct.
+/// The derive macro #[derive(Keycloak)] is used to implement the Authorization trait for a struct.\
 /// The trait will add the AuthorizationType authorization to the Api and will use the Keycloak service.
 #[proc_macro_derive(Keycloak, attributes(auth_type, pagination, filter, sort, range))]
 pub fn keycloak_derive(input: TokenStream) -> TokenStream {
@@ -146,9 +146,9 @@ fn impl_authorization_derive(ast: &syn::DeriveInput) -> TokenStream {
     gen.into()
 }
 
-/// Impl the Authorization trait for the struct, with the OAuth2 implementation.
-/// The trait accept the pagination, filter, sort and range types as attributes. (Optionals)
-/// We use the AST to find the attributes (pagination, filter, sort and range) and parse them to the correct type.
+/// Impl the Authorization trait for the struct, with the OAuth2 implementation.\
+/// The trait accept the pagination, filter, sort and range types as attributes. (Optionals)\
+/// We use the AST to find the attributes (pagination, filter, sort and range) and parse them to the correct type.\
 /// If the attribute is not found, we use the default type.
 fn impl_oauth2_derive(ast: &syn::DeriveInput) -> TokenStream {
     let name = &ast.ident;
@@ -205,9 +205,9 @@ fn impl_oauth2_derive(ast: &syn::DeriveInput) -> TokenStream {
     gen.into()
 }
 
-/// Impl the Authorization trait for the struct, with the Basic implementation.
-/// The trait accept the pagination, filter, sort and range types as attributes. (Optionals)
-/// We use the AST to find the attributes (pagination, filter, sort and range) and parse them to the correct type.
+/// Impl the Authorization trait for the struct, with the Basic implementation.\
+/// The trait accept the pagination, filter, sort and range types as attributes. (Optionals)\
+/// We use the AST to find the attributes (pagination, filter, sort and range) and parse them to the correct type.\
 /// If the attribute is not found, we use the default type.
 fn impl_basic_derive(ast: &syn::DeriveInput) -> TokenStream {
     let name = &ast.ident;
@@ -226,9 +226,9 @@ fn impl_basic_derive(ast: &syn::DeriveInput) -> TokenStream {
     gen.into()
 }
 
-/// Impl the Authorization trait for the struct, with the Bearer implementation.
-/// The trait accept the pagination, filter, sort and range types as attributes. (Optionals)
-/// We use the AST to find the attributes (pagination, filter, sort and range) and parse them to the correct type.
+/// Impl the Authorization trait for the struct, with the Bearer implementation.\
+/// The trait accept the pagination, filter, sort and range types as attributes. (Optionals)\
+/// We use the AST to find the attributes (pagination, filter, sort and range) and parse them to the correct type.\
 /// If the attribute is not found, we use the default type.
 fn impl_bearer_derive(ast: &syn::DeriveInput) -> TokenStream {
     let name = &ast.ident;
@@ -246,9 +246,9 @@ fn impl_bearer_derive(ast: &syn::DeriveInput) -> TokenStream {
     gen.into()
 }
 
-/// Impl the Authorization trait for the struct, with the ApiKey implementation.
-/// The trait accept the pagination, filter, sort and range types as attributes. (Optionals)
-/// We use the AST to find the attributes (pagination, filter, sort and range) and parse them to the correct type.
+/// Impl the Authorization trait for the struct, with the ApiKey implementation.\
+/// The trait accept the pagination, filter, sort and range types as attributes. (Optionals)\
+/// We use the AST to find the attributes (pagination, filter, sort and range) and parse them to the correct type.\
 /// If the attribute is not found, we use the default type.
 fn impl_apikey_derive(ast: &syn::DeriveInput) -> TokenStream {
     let name = &ast.ident;
@@ -266,9 +266,9 @@ fn impl_apikey_derive(ast: &syn::DeriveInput) -> TokenStream {
     gen.into()
 }
 
-/// Impl the Authorization trait for the struct, with the OIDC implementation.
-/// The trait accept the pagination, filter, sort and range types as attributes. (Optionals)
-/// We use the AST to find the attributes (pagination, filter, sort and range) and parse them to the correct type.
+/// Impl the Authorization trait for the struct, with the OIDC implementation.\
+/// The trait accept the pagination, filter, sort and range types as attributes. (Optionals)\
+/// We use the AST to find the attributes (pagination, filter, sort and range) and parse them to the correct type.\
 /// If the attribute is not found, we use the default type.
 fn impl_oidc_derive(ast: &syn::DeriveInput) -> TokenStream {
     let name = &ast.ident;

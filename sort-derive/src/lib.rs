@@ -3,7 +3,7 @@ extern crate proc_macro;
 use proc_macro::TokenStream;
 use quote::quote;
 
-/// The derive macro #[derive(Sort)] is used to implement the Sort trait by default for a struct.
+/// The derive macro #[derive(Sort)] is used to implement the Sort trait by default for a struct.\
 /// The trait will not add any sorts to the Query by default.
 #[proc_macro_derive(Sort)]
 pub fn sort_derive(input: TokenStream) -> TokenStream {
