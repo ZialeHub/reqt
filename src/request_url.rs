@@ -34,16 +34,19 @@ impl RequestUrl {
         }
     }
 
+    /// Set the HTTP method to be used in the request
     pub fn method(mut self, method: Method) -> Self {
         self.method = method;
         self
     }
 
+    /// Set the route to be used in the request
     pub fn route(mut self, route: impl ToString) -> Self {
         self.route = route.to_string();
         self
     }
 
+    /// Set the query to be used in the request
     pub fn query(mut self, query: Query) -> Self {
         self.query = query;
         self

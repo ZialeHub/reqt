@@ -4,12 +4,28 @@ use crate::{
     connector::{Api, AuthorizationType},
     filter::{Filter, FilterRule},
     pagination::{Pagination, PaginationRule, RequestPagination},
-    prelude::Query,
+    query::Query,
     range::{Range, RangeRule},
     rate_limiter::{RateLimiter, TimePeriod},
     sort::{Sort, SortRule},
 };
 
+/// Builder to create an API connector
+///
+/// # Parameters
+/// * `P` - Pagination rule to be used in the API
+/// * `F` - Filter rule to be used in the API
+/// * `S` - Sort rule to be used in the API
+/// * `R` - Range rule to be used in the API
+///
+/// # Example
+/// ```rust,ignore
+/// let api = ApiBuilder::<MyRequestPagination, MyFilterRule>::new("https://api.example.com")
+///    .bearer("token")
+///    .pagination(PaginationRule::Fixed(10))
+///    .filter(MyFilterRule::default().pattern("property[filter]"))
+///    .build();
+/// ```
 #[derive(Debug, Clone)]
 pub struct ApiBuilder<
     P: Pagination = RequestPagination,
@@ -32,6 +48,16 @@ impl<P: Pagination, F: Filter, S: Sort, R: Range> ApiBuilder<P, F, S, R>
 where
     Query: for<'a> From<&'a F> + for<'a> From<&'a S> + for<'a> From<&'a R>,
 {
+    /// Create a new API builder
+    ///
+    /// # Attributes
+    /// * authorization - AuthorizationType::None
+    /// * endpoint - The API endpoint
+    /// * pagination - P::default()
+    /// * filter - F::default()
+    /// * sort - S::default()
+    /// * range - R::default()
+    /// * rate_limiter - RateLimiter::new(1, TimePeriod::Second)
     pub fn new(endpoint: impl ToString) -> Self {
         Self {
             authorization: AuthorizationType::None,

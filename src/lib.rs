@@ -1,3 +1,5 @@
+#![doc = include_str!("../README.md")]
+
 pub mod connector;
 pub mod connector_builder;
 pub mod error;
