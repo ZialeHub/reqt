@@ -3,6 +3,14 @@ use strum::{EnumIter, IntoEnumIterator};
 
 use chrono::{NaiveDateTime, TimeDelta};
 
+/// TimePeriod is used to define the time period for the rate limiter\
+/// It can be Second, Minute, Hour or Day
+///
+/// # Default Api Rate Limiter
+/// ```rust,ignore
+/// // The default rate limiter is 1 request per second
+/// RateLimiter::new(1, TimePeriod::Second)
+/// ```
 #[derive(Debug, Clone, Default, EnumIter, PartialEq)]
 pub enum TimePeriod {
     #[default]
@@ -42,6 +50,12 @@ pub struct RateLimiter {
     pub timer: NaiveDateTime,
 }
 impl RateLimiter {
+    /// Create a new rate limiter
+    ///
+    /// # Attributes
+    /// * limit - The limit of requests per period
+    /// * period - The time period for the rate limiter
+    /// * is_adaptive - If the rate limiter should adapt to the server rate limit
     pub fn new(limit: u32, period: TimePeriod) -> RateLimiter {
         RateLimiter {
             limit,
@@ -52,11 +66,17 @@ impl RateLimiter {
             timer: chrono::Utc::now().naive_local(),
         }
     }
+
+    /// Set the rate limiter to be adaptive or not
+    ///
+    /// If the rate limiter is adaptive, it will adapt to the server rate limit,
+    /// using the lowest rate found in the headers
     pub fn is_adaptive(mut self, is_adaptive: bool) -> Self {
         self.is_adaptive = is_adaptive;
         self
     }
 
+    /// Update the rate limiter with the headers from the request
     pub fn update(&mut self, headers: &reqwest::header::HeaderMap) {
         if !self.is_adaptive {
             return;
@@ -79,6 +99,7 @@ impl RateLimiter {
         }
     }
 
+    /// Sleep for the period of the rate limiter
     fn sleep(&self) {
         match self.period {
             TimePeriod::Second => sleep(Duration::from_secs(1)),
@@ -88,6 +109,7 @@ impl RateLimiter {
         }
     }
 
+    /// Request once the rate limit is available
     pub fn request(&mut self) {
         loop {
             if chrono::Utc::now().naive_local() - self.timer >= self.period.clone().into() {
@@ -97,8 +119,6 @@ impl RateLimiter {
             if self.remaining > 0 {
                 self.remaining -= 1;
                 return;
-            // } else if self.is_asleep {
-            //     return false;
             } else {
                 self.is_asleep = true;
                 eprintln!("Rate limit exceeded, sleeping for {:?}", self.period);

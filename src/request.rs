@@ -7,7 +7,7 @@ use crate::{
     error::{ApiError, Result},
     filter::{Filter, FilterRule},
     pagination::{Pagination, PaginationRule, RequestPagination},
-    prelude::Query,
+    query::Query,
     range::{Range, RangeRule},
     rate_limiter::RateLimiter,
     request_url::RequestUrl,
@@ -247,11 +247,13 @@ where
         self
     }
 
+    /// Set the pattern filter
     pub fn pattern_filter(mut self, pattern: impl ToString) -> Self {
         self.filter = self.filter.pattern(pattern);
         self
     }
 
+    /// Add a filter to the list
     pub fn filter<T: IntoIterator>(mut self, property: impl ToString, value: T) -> Self
     where
         T::Item: ToString,
@@ -260,6 +262,7 @@ where
         self
     }
 
+    /// Add a specific filter to a property without the pattern
     pub fn filter_with<T: IntoIterator>(
         mut self,
         property: impl ToString,
@@ -273,26 +276,31 @@ where
         self
     }
 
+    /// Add a sort on a pattern to the list
     pub fn pattern_sort(mut self, pattern: impl ToString) -> Self {
         self.sort = self.sort.pattern(pattern);
         self
     }
 
+    /// Add a sort on a property to the list
     pub fn sort(mut self, property: impl ToString) -> Self {
         self.sort = self.sort.sort(property);
         self
     }
 
+    /// Add a sort with order on a property to the list
     pub fn sort_with(mut self, property: impl ToString, order: SortOrder) -> Self {
         self.sort = self.sort.sort_with(property, order);
         self
     }
 
+    /// Set the pattern to match the range
     pub fn pattern_range(mut self, pattern: impl ToString) -> Self {
         self.range = self.range.pattern(pattern);
         self
     }
 
+    /// Add a range to the list
     pub fn range(
         mut self,
         property: impl ToString,

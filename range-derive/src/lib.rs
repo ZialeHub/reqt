@@ -3,7 +3,7 @@ extern crate proc_macro;
 use proc_macro::TokenStream;
 use quote::quote;
 
-/// The derive macro #[derive(Range)] is used to implement the Range trait by default for a struct.
+/// The derive macro #[derive(Range)] is used to implement the Range trait by default for a struct.\
 /// By default the range trait will not add any range to the Query.
 #[proc_macro_derive(Range)]
 pub fn range_derive(input: TokenStream) -> TokenStream {

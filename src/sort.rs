@@ -32,21 +32,21 @@ pub trait Sort: Default + Clone
 where
     Self: Sized + 'static,
 {
-    /// Set the pattern to match the sort
-    /// The pattern must contains the words "property" and can contains "order"
-    /// property will be replaced by the property name you want to sort
+    /// Set the pattern to match the sort\
+    /// The pattern must contains the words "property" and can contains "order"\
+    /// property will be replaced by the property name you want to sort\
     ///
-    /// Example: "property"
-    /// Example: "order(property)"
-    /// Example: "property.order"
+    /// Example: `property`\
+    /// Example: `order(property)`\
+    /// Example: `property.order`
     fn pattern(self, pattern: impl ToString) -> Self;
 
-    /// Add a sort on a property to the list
-    /// Usage: in case of : sort=-property1,property2
+    /// Add a sort on a property to the list\
+    /// Usage: in case of : sort=-property1,property2\
     /// You should implement this method to override the property if already exists
     fn sort(self, property: impl ToString) -> Self;
 
-    /// Add a sort with order on a property to the list
+    /// Add a sort with order on a property to the list\
     /// You should implement this method to override the property if already exists
     fn sort_with(self, property: impl ToString, order: SortOrder) -> Self;
 }

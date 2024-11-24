@@ -4,8 +4,8 @@ use std::sync::{Arc, RwLock};
 
 use crate::{
     filter::{Filter, FilterRule},
-    pagination::{Pagination, RequestPagination},
-    prelude::{PaginationRule, Query},
+    pagination::{Pagination, PaginationRule, RequestPagination},
+    query::Query,
     range::{Range, RangeRule},
     rate_limiter::RateLimiter,
     request::Request,
@@ -40,6 +40,18 @@ impl<B: Serialize + Clone, P: Pagination, F: Filter, S: Sort, R: Range>
 where
     Query: for<'a> From<&'a F> + for<'a> From<&'a S> + for<'a> From<&'a R>,
 {
+    /// Create a new request builder
+    ///
+    /// # Attributes
+    /// * method - Method::GET
+    /// * request_url - The URL to request
+    /// * headers - None
+    /// * body - None
+    /// * pagination - P::default()
+    /// * filter - F::default()
+    /// * sort - S::default()
+    /// * range - R::default()
+    /// * rate_limiter - The rate limiter to use
     pub fn new(request_url: RequestUrl, rate_limiter: Arc<RwLock<RateLimiter>>) -> Self {
         Self {
             method: Method::GET,
@@ -54,36 +66,43 @@ where
         }
     }
 
+    /// Set the method of the request
     pub fn method(mut self, method: Method) -> Self {
         self.method = method;
         self
     }
 
+    /// Set the headers of the request
     pub fn headers(mut self, headers: HeaderMap) -> Self {
         self.headers = Some(headers);
         self
     }
 
+    /// Set the body of the request
     pub fn body(mut self, body: B) -> Self {
         self.body = Some(body);
         self
     }
 
+    /// Set the pagination of the request (Overrides the pagination from the connector)
     pub fn pagination(mut self, pagination: PaginationRule) -> Self {
         self.pagination = self.pagination.set_pagination(pagination);
         self
     }
 
+    /// Set the filter of the request
     pub fn filter(mut self, filter: F) -> Self {
         self.filter = filter;
         self
     }
 
+    /// Set the sort of the request
     pub fn sort(mut self, sort: S) -> Self {
         self.sort = sort;
         self
     }
 
+    /// Set the range of the request
     pub fn range(mut self, range: R) -> Self {
         self.range = range;
         self

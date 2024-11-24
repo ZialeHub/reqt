@@ -8,14 +8,15 @@ use reqwest::{header::HeaderMap, Method};
 use serde::Serialize;
 
 use crate::{
+    connector_builder::ApiBuilder,
     error::Result,
     filter::{Filter, FilterRule},
     pagination::{Pagination, PaginationRule, RequestPagination},
-    prelude::{ApiBuilder, RequestBuilder},
     query::Query,
     range::{Range, RangeRule},
     rate_limiter::{RateLimiter, TimePeriod},
     request::Request,
+    request_builder::RequestBuilder,
     request_url::RequestUrl,
     sort::{Sort, SortRule},
 };
@@ -117,20 +118,45 @@ impl<P: Pagination, F: Filter, S: Sort, R: Range> Api<P, F, S, R>
 where
     Query: for<'a> From<&'a F> + for<'a> From<&'a S> + for<'a> From<&'a R>,
 {
+    /// Setter for the pagination type\
+    ///
+    /// # Arguments
+    /// * `pagination` - Pagination type to be used in the request
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// api_connector.connect("https://api.example.com").await?.pagination(PaginationRule::OneShot);
+    /// ```
     pub fn pagination(mut self, pagination: PaginationRule) -> Self {
         self.pagination = self.pagination.set_pagination(pagination);
         self
     }
 
+    /// Getter for the authorization token
     pub fn token(&self) -> String {
         self.authorization.to_string()
     }
 
+    /// Setter for the filter pattern
+    ///
+    /// Set the pattern to match the filter\
+    /// The pattern must contains the words "property" and can contains "filter"\
+    /// property will be replaced by the property name you want to filter\
+    /// filter will be replaced if the API supports multiple filters\
+    /// Filter example: lte, gte, exists, regex, before, after, ...\
+    /// The pattern will be joined with the values separated by '='
+    ///
+    /// Example: `property[filter]`\
+    /// Example: `filter[property]`\
+    /// Example: `property`
     pub fn pattern_filter(mut self, pattern: impl ToString) -> Self {
         self.filter = self.filter.pattern(pattern);
         self
     }
 
+    /// Add a filter to the list
+    ///
+    /// Filters will be used in the request query to filter the results
     pub fn filter<T: IntoIterator>(mut self, property: impl ToString, value: T) -> Self
     where
         T::Item: ToString,
@@ -139,6 +165,8 @@ where
         self
     }
 
+    /// Add a a specific filter on a property to the list\
+    /// This function can be used to filter without using the default pattern
     pub fn filter_with<T: IntoIterator>(
         mut self,
         property: impl ToString,
@@ -152,26 +180,38 @@ where
         self
     }
 
+    /// Set the pattern to match the sort\
+    /// The pattern must contains the words "property" and can contains "order"\
+    /// property will be replaced by the property name you want to sort
+    ///
+    /// Example: `property`\
+    /// Example: `order(property)`\
+    /// Example: `property.order`
     pub fn pattern_sort(mut self, pattern: impl ToString) -> Self {
         self.sort = self.sort.pattern(pattern);
         self
     }
 
+    /// Add a sort on a property to the list\
+    /// Usage: in case of : sort=-property1,property2
     pub fn sort(mut self, property: impl ToString) -> Self {
         self.sort = self.sort.sort(property);
         self
     }
 
+    /// Add a sort with order on a property to the list
     pub fn sort_with(mut self, property: impl ToString, order: crate::sort::SortOrder) -> Self {
         self.sort = self.sort.sort_with(property, order);
         self
     }
 
+    /// Setter for the range pattern
     pub fn pattern_range(mut self, pattern: impl ToString) -> Self {
         self.range = self.range.pattern(pattern);
         self
     }
 
+    /// Add a range to the list
     pub fn range(
         mut self,
         property: impl ToString,
@@ -182,6 +222,7 @@ where
         self
     }
 
+    /// Set the rate limit for the API
     pub fn rate_limit(self, rate_limit: u32) -> Self {
         match self.rate_limit.write() {
             Ok(mut rate) => rate.limit = rate_limit,
@@ -190,6 +231,7 @@ where
         self
     }
 
+    /// Set the rate period for the API
     pub fn rate_period(self, rate_period: TimePeriod) -> Self {
         match self.rate_limit.write() {
             Ok(mut rate) => rate.period = rate_period,

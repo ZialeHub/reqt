@@ -30,11 +30,11 @@ impl Default for PaginationRule {
 /// # Default
 /// * size - 100
 /// * current_page - 1
-/// * pagination - PaginationRule::default()
+/// * pagination - [PaginationRule::default()]
 ///
-/// The default pagination rule is:
-/// 'page[number]=x' with x starting at 1
-/// 'page[size]=y' with y starting at 100
+/// The default pagination rule is:\
+/// `page[number]=x` with x starting at 1\
+/// `page[size]=y` with y starting at 100
 #[derive(Debug, Clone, Pagination)]
 pub struct RequestPagination {
     pub(crate) size: usize,
