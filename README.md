@@ -26,7 +26,7 @@ or by implementing your own types that implement the following traits:
 - [Sort](sort::Sort)
 - [Range](range::Range)
 
-Each rules can be override on a specific request if needed later.
+Each rule can be overridden for a specific request if needed later.
 
 # Authorization
 
@@ -47,13 +47,13 @@ username and password are Base64 encoded\
 
 # Request
 
-`Request< B: Serialize + Clone = (), P: Pagination = RequestPagination, F: Filter = FilterRule, S: Sort = SortRule, R: Range = RangeRule>`
+`Request<B: Serialize + Clone = (), P: Pagination = RequestPagination, F: Filter = FilterRule, S: Sort = SortRule, R: Range = RangeRule>`
 
 The request allow you to override pagination, filter, sort and range rules from the connector.
 
 # Pagination
 
-Pagination define the rule to manage multiple pages request depends on the API specifications.
+Pagination defines the rule to manage multiple page requests depending on the API specifications.
 
 By default [RequestPagination](pagination::RequestPagination) will be used and fields are set as follow:
 - `size = 100` => Page size
@@ -71,23 +71,24 @@ Where `X` is the number of page you want collected by one request
 
 # Filter
 
-Filter define the way to filter ressources with your request, and the list of filters you want to apply.
+Filter defines the way to filter resources with your request, and the list of filters you want to apply.
 
 To implement your own filter rule, you need to implement the [Filter](filter::Filter) trait.
 
 # Range
 
-range define the way to range ressources with your request, and the list of ranges you want to apply.
+Range defines the way to range resources with your request, and the list of ranges you want to apply.
 
 To implement your own range rule, you need to implement the [Range](range::Range) trait.
 
 # Sort
 
-Sort define the way to sort ressources with your request, and the list of sorts you want to apply.
+Sort defines the way to sort resources with your request, and the list of sorts you want to apply.
 
 To implement your own sort rule, you need to implement the [Sort](sort::Sort) trait.
 
 ### [SortOrder](sort::SortOrder)
+
 - [Asc](sort::SortOrder::Asc)
 - [Desc](sort::SortOrder::Desc)
 
