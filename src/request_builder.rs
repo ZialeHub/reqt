@@ -33,6 +33,7 @@ pub struct RequestBuilder<
     pub(crate) sort: S,
     pub(crate) range: R,
     pub(crate) rate_limiter: Arc<RwLock<RateLimiter>>,
+    pub(crate) force_limit: Option<u8>,
 }
 
 impl<B: Serialize + Clone, P: Pagination, F: Filter, S: Sort, R: Range>
@@ -52,6 +53,7 @@ where
     /// * sort - S::default()
     /// * range - R::default()
     /// * rate_limiter - The rate limiter to use
+    /// * force_limit - None
     pub fn new(request_url: RequestUrl, rate_limiter: Arc<RwLock<RateLimiter>>) -> Self {
         Self {
             method: Method::GET,
@@ -63,6 +65,7 @@ where
             sort: S::default(),
             range: R::default(),
             rate_limiter,
+            force_limit: None,
         }
     }
 
@@ -108,6 +111,12 @@ where
         self
     }
 
+    /// Set the number of retry attempts on 429 responses
+    pub fn force_limit(mut self, limit: Option<u8>) -> Self {
+        self.force_limit = limit;
+        self
+    }
+
     pub fn build(self) -> Request<B, P, F, S, R> {
         Request {
             method: self.method,
@@ -119,6 +128,7 @@ where
             sort: self.sort,
             range: self.range,
             rate_limiter: self.rate_limiter,
+            force_limit: self.force_limit,
         }
     }
 }

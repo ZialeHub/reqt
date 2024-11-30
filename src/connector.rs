@@ -112,6 +112,7 @@ pub struct Api<
     pub(crate) sort: S,
     pub(crate) range: R,
     pub(crate) rate_limit: Arc<RwLock<RateLimiter>>,
+    pub(crate) force_limit: Option<u8>,
 }
 
 impl<P: Pagination, F: Filter, S: Sort, R: Range> Api<P, F, S, R>
@@ -239,6 +240,14 @@ where
         }
         self
     }
+
+    /// Set the number of retry attempts on a 429 response
+    ///
+    /// None will not retry
+    pub fn force_limit(mut self, limit: Option<u8>) -> Self {
+        self.force_limit = limit;
+        self
+    }
 }
 
 impl<P: Pagination, F: Filter, S: Sort, R: Range> Connector<P, F, S, R> for Api<P, F, S, R>
@@ -261,6 +270,7 @@ where
             .filter(self.filter.clone())
             .sort(self.sort.clone())
             .range(self.range.clone())
+            .force_limit(self.force_limit)
             .build();
 
         Ok(request)
@@ -292,7 +302,8 @@ where
                 .pagination(self.pagination.pagination().clone())
                 .filter(self.filter.clone())
                 .sort(self.sort.clone())
-                .range(self.range.clone());
+                .range(self.range.clone())
+                .force_limit(self.force_limit);
         if let Some(body) = body {
             request_builder = request_builder.body(body);
         }
@@ -327,7 +338,8 @@ where
                 .pagination(self.pagination.pagination().clone())
                 .filter(self.filter.clone())
                 .sort(self.sort.clone())
-                .range(self.range.clone());
+                .range(self.range.clone())
+                .force_limit(self.force_limit);
         if let Some(body) = body {
             request_builder = request_builder.body(body);
         }
@@ -362,7 +374,8 @@ where
                 .pagination(self.pagination.pagination().clone())
                 .filter(self.filter.clone())
                 .sort(self.sort.clone())
-                .range(self.range.clone());
+                .range(self.range.clone())
+                .force_limit(self.force_limit);
         if let Some(body) = body {
             request_builder = request_builder.body(body);
         }
@@ -387,6 +400,7 @@ where
             .filter(self.filter.clone())
             .sort(self.sort.clone())
             .range(self.range.clone())
+            .force_limit(self.force_limit)
             .build();
 
         Ok(request)

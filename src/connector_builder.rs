@@ -42,6 +42,7 @@ pub struct ApiBuilder<
     pub(crate) sort: S,
     pub(crate) range: R,
     pub(crate) rate_limiter: RateLimiter,
+    pub(crate) force_limit: Option<u8>,
 }
 
 impl<P: Pagination, F: Filter, S: Sort, R: Range> ApiBuilder<P, F, S, R>
@@ -58,6 +59,7 @@ where
     /// * sort - S::default()
     /// * range - R::default()
     /// * rate_limiter - RateLimiter::new(1, TimePeriod::Second)
+    /// * force_limit - None
     pub fn new(endpoint: impl ToString) -> Self {
         Self {
             authorization: AuthorizationType::None,
@@ -67,6 +69,7 @@ where
             sort: S::default(),
             range: R::default(),
             rate_limiter: RateLimiter::new(1, TimePeriod::Second),
+            force_limit: None,
         }
     }
 
@@ -135,6 +138,11 @@ where
         self
     }
 
+    pub fn force_limit(mut self, limit: u8) -> Self {
+        self.force_limit = Some(limit);
+        self
+    }
+
     pub fn build(self) -> Api<P, F, S, R> {
         Api {
             authorization: self.authorization,
@@ -144,6 +152,7 @@ where
             sort: self.sort,
             range: self.range,
             rate_limit: Arc::new(RwLock::new(self.rate_limiter)),
+            force_limit: self.force_limit,
         }
     }
 }
