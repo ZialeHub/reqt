@@ -45,6 +45,7 @@ pub struct Request<
     pub(crate) sort: S,
     pub(crate) range: R,
     pub(crate) rate_limiter: Arc<RwLock<RateLimiter>>,
+    pub(crate) force_limit: Option<u8>,
 }
 
 impl<B: Serialize + Clone, P: Pagination, F: Filter, S: Sort, R: Range> Request<B, P, F, S, R>
@@ -68,6 +69,7 @@ where
             sort: S::default(),
             range: R::default(),
             rate_limiter: Arc::new(RwLock::new(RateLimiter::default())),
+            force_limit: None,
         }
     }
 
@@ -83,7 +85,7 @@ where
         }
         let request = self.build_reqwest::<B>(self.body.clone())?;
         eprintln!("{:?}", request);
-        let first_response = Self::execute_reqwest(&request).await?;
+        let first_response = Self::execute_reqwest(&request, self.force_limit).await?;
         match self.rate_limiter.write() {
             Ok(mut rate) => rate.update(first_response.headers()),
             Err(e) => eprintln!("Rate limiter error: {:?}", e),
@@ -137,13 +139,31 @@ where
         }
     }
 
-    async fn execute_reqwest(request: &reqwest::Request) -> Result<reqwest::Response> {
+    async fn execute_reqwest(
+        request: &reqwest::Request,
+        retries_limit: Option<u8>,
+    ) -> Result<reqwest::Response> {
         let client = Client::new();
         let response = client
             .execute(request.try_clone().ok_or(ApiError::ReqwestClone)?)
             .await
             .map_err(ApiError::ReqwestExecute)?;
 
+        if response.status() == StatusCode::TOO_MANY_REQUESTS {
+            let Some(mut limit) = retries_limit else {
+                return Err(ApiError::TooManyRequests);
+            };
+            while limit > 0 {
+                limit -= 1;
+                let response = client
+                    .execute(request.try_clone().ok_or(ApiError::ReqwestClone)?)
+                    .await
+                    .map_err(ApiError::ReqwestExecute)?;
+                if response.status() != StatusCode::TOO_MANY_REQUESTS {
+                    break;
+                }
+            }
+        }
         match response.status() {
             StatusCode::OK
             | StatusCode::CREATED
@@ -207,7 +227,7 @@ where
 
             let next_request = Self::build_next_reqwest(&request, next_url)?;
 
-            let next_page_response = Self::execute_reqwest(&next_request).await?;
+            let next_page_response = Self::execute_reqwest(&next_request, self.force_limit).await?;
             match self.rate_limiter.write() {
                 Ok(mut rate) => rate.update(next_page_response.headers()),
                 Err(e) => eprintln!("Rate limiter error: {:?}", e),
@@ -308,6 +328,14 @@ where
         max: impl ToString,
     ) -> Self {
         self.range = self.range.range(property, min, max);
+        self
+    }
+
+    /// Set the number of retry attempts on 429 responses
+    ///
+    /// None means no retry
+    pub fn force_limite(mut self, limit: Option<u8>) -> Self {
+        self.force_limit = limit;
         self
     }
 }
