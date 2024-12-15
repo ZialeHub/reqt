@@ -1,5 +1,5 @@
 use reqwest::{header::HeaderMap, Method};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::sync::{Arc, RwLock};
 
 use crate::{
@@ -16,6 +16,7 @@ use crate::{
 /// Builder to create a request
 #[derive(Debug, Clone)]
 pub struct RequestBuilder<
+    X: Deserialize<'static> = (),
     B: Serialize + Clone = (),
     P: Pagination = RequestPagination,
     F: Filter = FilterRule,
@@ -34,10 +35,17 @@ pub struct RequestBuilder<
     pub(crate) range: R,
     pub(crate) rate_limiter: Arc<RwLock<RateLimiter>>,
     pub(crate) force_limit: Option<u8>,
+    pub(crate) _phantom: std::marker::PhantomData<X>,
 }
 
-impl<B: Serialize + Clone, P: Pagination, F: Filter, S: Sort, R: Range>
-    RequestBuilder<B, P, F, S, R>
+impl<
+        X: Deserialize<'static>,
+        B: Serialize + Clone,
+        P: Pagination,
+        F: Filter,
+        S: Sort,
+        R: Range,
+    > RequestBuilder<X, B, P, F, S, R>
 where
     Query: for<'a> From<&'a F> + for<'a> From<&'a S> + for<'a> From<&'a R>,
 {
@@ -66,6 +74,7 @@ where
             range: R::default(),
             rate_limiter,
             force_limit: None,
+            _phantom: std::marker::PhantomData,
         }
     }
 
@@ -117,7 +126,7 @@ where
         self
     }
 
-    pub fn build(self) -> Request<B, P, F, S, R> {
+    pub fn build(self) -> Request<X, B, P, F, S, R> {
         Request {
             method: self.method,
             request_url: self.request_url,
@@ -129,6 +138,7 @@ where
             range: self.range,
             rate_limiter: self.rate_limiter,
             force_limit: self.force_limit,
+            _phantom: self._phantom,
         }
     }
 }

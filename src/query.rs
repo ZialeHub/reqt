@@ -14,6 +14,11 @@ impl Query {
         Self::default()
     }
 
+    /// Create a new query from a key-value pair
+    pub fn from(key: impl ToString, value: impl ToString) -> Self {
+        Self::default().add(key, value)
+    }
+
     /// Add a key-value pair to the query
     pub fn add(mut self, key: impl ToString, value: impl ToString) -> Self {
         self.0

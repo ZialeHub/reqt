@@ -1,7 +1,11 @@
 use reqwest::{header::HeaderMap, Client, Method, StatusCode, Url};
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::Value;
-use std::sync::{Arc, RwLock};
+use std::{
+    future::{Future, IntoFuture},
+    pin::Pin,
+    sync::{Arc, RwLock},
+};
 
 use crate::{
     error::{ApiError, Result},
@@ -28,6 +32,7 @@ use crate::{
 /// * pagination - Pagination type to be used in the request
 #[derive(Debug, Clone)]
 pub struct Request<
+    X: Deserialize<'static> = (),
     B: Serialize + Clone = (),
     P: Pagination = RequestPagination,
     F: Filter = FilterRule,
@@ -46,9 +51,36 @@ pub struct Request<
     pub(crate) range: R,
     pub(crate) rate_limiter: Arc<RwLock<RateLimiter>>,
     pub(crate) force_limit: Option<u8>,
+    pub(crate) _phantom: std::marker::PhantomData<X>,
 }
 
-impl<B: Serialize + Clone, P: Pagination, F: Filter, S: Sort, R: Range> Request<B, P, F, S, R>
+impl<
+        X: for<'de> Deserialize<'de> + Serialize + Send + 'static,
+        B: Serialize + DeserializeOwned + Clone + Sync + Send + 'static + Unpin,
+        P: Pagination + Sync + Send + 'static + Unpin,
+        F: Filter + Sync + Send + 'static + Unpin,
+        S: Sort + Sync + Send + 'static + Unpin,
+        R: Range + Sync + Send + 'static + Unpin,
+    > IntoFuture for Request<X, B, P, F, S, R>
+where
+    Query: for<'a> From<&'a F> + for<'a> From<&'a S> + for<'a> From<&'a R>,
+{
+    type Output = Result<X>;
+    type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send>>;
+
+    fn into_future(mut self) -> Self::IntoFuture {
+        Box::pin(async move { self.send::<X>().await })
+    }
+}
+
+impl<
+        X: Deserialize<'static>,
+        B: Serialize + Clone,
+        P: Pagination,
+        F: Filter,
+        S: Sort,
+        R: Range,
+    > Request<X, B, P, F, S, R>
 where
     Query: for<'a> From<&'a F> + for<'a> From<&'a S> + for<'a> From<&'a R>,
 {
@@ -70,6 +102,7 @@ where
             range: R::default(),
             rate_limiter: Arc::new(RwLock::new(RateLimiter::default())),
             force_limit: None,
+            _phantom: std::marker::PhantomData,
         }
     }
 
@@ -336,6 +369,25 @@ where
     /// None means no retry
     pub fn force_limite(mut self, limit: Option<u8>) -> Self {
         self.force_limit = limit;
+        self
+    }
+
+    /// Add a body to the request
+    ///
+    /// Do nothing if the request method is not POST, PUT or PATCH
+    pub fn body(mut self, body: &B) -> Self {
+        match self.method {
+            Method::POST | Method::PUT | Method::PATCH => {
+                self.body = Some(body.clone());
+            }
+            _ => {}
+        }
+        self
+    }
+
+    /// Add a query to the request
+    pub fn query(mut self, query: Query) -> Self {
+        self.request_url = self.request_url.join_query(query);
         self
     }
 }

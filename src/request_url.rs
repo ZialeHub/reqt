@@ -52,6 +52,12 @@ impl RequestUrl {
         self
     }
 
+    /// Join two queries into one
+    pub fn join_query(mut self, query: Query) -> Self {
+        self.query = self.query.join(query);
+        self
+    }
+
     /// Convert the request URL to a URL
     /// that can be used in a request (Contains the query with pagination)
     pub fn as_url<P: Pagination, F: Filter, S: Sort, R: Range>(

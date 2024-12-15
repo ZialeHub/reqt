@@ -5,7 +5,7 @@ use std::{
 };
 
 use reqwest::{header::HeaderMap, Method};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     connector_builder::ApiBuilder,
@@ -254,17 +254,19 @@ impl<P: Pagination, F: Filter, S: Sort, R: Range> Connector<P, F, S, R> for Api<
 where
     Query: for<'a> From<&'a F> + for<'a> From<&'a S> + for<'a> From<&'a R>,
 {
-    fn get(&self, route: impl ToString, query: Query) -> Result<Request<(), P, F, S, R>> {
+    fn get<X: Deserialize<'static>>(
+        &self,
+        route: impl ToString,
+    ) -> Result<Request<X, (), P, F, S, R>> {
         let mut headers = HeaderMap::new();
 
         self.authorization.header_value(&mut headers)?;
 
         let url = RequestUrl::new(&self.endpoint)
             .route(route.to_string())
-            .method(Method::GET)
-            .query(query);
+            .method(Method::GET);
 
-        let request = RequestBuilder::<(), P, F, S, R>::new(url, self.rate_limit.clone())
+        let request = RequestBuilder::<X, (), P, F, S, R>::new(url, self.rate_limit.clone())
             .headers(headers)
             .pagination(self.pagination.pagination().clone())
             .filter(self.filter.clone())
@@ -276,12 +278,10 @@ where
         Ok(request)
     }
 
-    fn post<B: Serialize + Clone>(
+    fn post<X: Deserialize<'static>, B: Serialize + Clone>(
         &self,
         route: impl ToString,
-        query: Query,
-        body: Option<B>,
-    ) -> Result<Request<B, P, F, S, R>> {
+    ) -> Result<Request<X, B, P, F, S, R>> {
         let mut headers = HeaderMap::new();
 
         self.authorization.header_value(&mut headers)?;
@@ -293,31 +293,24 @@ where
 
         let url = RequestUrl::new(&self.endpoint)
             .route(route.to_string())
-            .method(Method::POST)
-            .query(query);
+            .method(Method::POST);
 
-        let mut request_builder =
-            RequestBuilder::<B, P, F, S, R>::new(url, self.rate_limit.clone())
-                .headers(headers)
-                .pagination(self.pagination.pagination().clone())
-                .filter(self.filter.clone())
-                .sort(self.sort.clone())
-                .range(self.range.clone())
-                .force_limit(self.force_limit);
-        if let Some(body) = body {
-            request_builder = request_builder.body(body);
-        }
-        let request = request_builder.build();
+        let request = RequestBuilder::<X, B, P, F, S, R>::new(url, self.rate_limit.clone())
+            .headers(headers)
+            .pagination(self.pagination.pagination().clone())
+            .filter(self.filter.clone())
+            .sort(self.sort.clone())
+            .range(self.range.clone())
+            .force_limit(self.force_limit)
+            .build();
 
         Ok(request)
     }
 
-    fn put<B: Serialize + Clone>(
+    fn put<X: Deserialize<'static>, B: Serialize + Clone>(
         &self,
         route: impl ToString,
-        query: Query,
-        body: Option<B>,
-    ) -> Result<Request<B, P, F, S, R>> {
+    ) -> Result<Request<X, B, P, F, S, R>> {
         let mut headers = HeaderMap::new();
 
         self.authorization.header_value(&mut headers)?;
@@ -329,31 +322,24 @@ where
 
         let url = RequestUrl::new(&self.endpoint)
             .route(route.to_string())
-            .method(Method::PUT)
-            .query(query);
+            .method(Method::PUT);
 
-        let mut request_builder =
-            RequestBuilder::<B, P, F, S, R>::new(url, self.rate_limit.clone())
-                .headers(headers)
-                .pagination(self.pagination.pagination().clone())
-                .filter(self.filter.clone())
-                .sort(self.sort.clone())
-                .range(self.range.clone())
-                .force_limit(self.force_limit);
-        if let Some(body) = body {
-            request_builder = request_builder.body(body);
-        }
-        let request = request_builder.build();
+        let request = RequestBuilder::<X, B, P, F, S, R>::new(url, self.rate_limit.clone())
+            .headers(headers)
+            .pagination(self.pagination.pagination().clone())
+            .filter(self.filter.clone())
+            .sort(self.sort.clone())
+            .range(self.range.clone())
+            .force_limit(self.force_limit)
+            .build();
 
         Ok(request)
     }
 
-    fn patch<B: Serialize + Clone>(
+    fn patch<X: Deserialize<'static>, B: Serialize + Clone>(
         &self,
         route: impl ToString,
-        query: Query,
-        body: Option<B>,
-    ) -> Result<Request<B, P, F, S, R>> {
+    ) -> Result<Request<X, B, P, F, S, R>> {
         let mut headers = HeaderMap::new();
 
         self.authorization.header_value(&mut headers)?;
@@ -365,36 +351,33 @@ where
 
         let url = RequestUrl::new(&self.endpoint)
             .route(route.to_string())
-            .method(Method::PATCH)
-            .query(query);
+            .method(Method::PATCH);
 
-        let mut request_builder =
-            RequestBuilder::<B, P, F, S, R>::new(url, self.rate_limit.clone())
-                .headers(headers)
-                .pagination(self.pagination.pagination().clone())
-                .filter(self.filter.clone())
-                .sort(self.sort.clone())
-                .range(self.range.clone())
-                .force_limit(self.force_limit);
-        if let Some(body) = body {
-            request_builder = request_builder.body(body);
-        }
-        let request = request_builder.build();
+        let request = RequestBuilder::<X, B, P, F, S, R>::new(url, self.rate_limit.clone())
+            .headers(headers)
+            .pagination(self.pagination.pagination().clone())
+            .filter(self.filter.clone())
+            .sort(self.sort.clone())
+            .range(self.range.clone())
+            .force_limit(self.force_limit)
+            .build();
 
         Ok(request)
     }
 
-    fn delete(&self, route: impl ToString, query: Query) -> Result<Request<(), P, F, S, R>> {
+    fn delete<X: Deserialize<'static>>(
+        &self,
+        route: impl ToString,
+    ) -> Result<Request<X, (), P, F, S, R>> {
         let mut headers = HeaderMap::new();
 
         self.authorization.header_value(&mut headers)?;
 
         let url = RequestUrl::new(&self.endpoint)
             .route(route.to_string())
-            .method(Method::DELETE)
-            .query(query);
+            .method(Method::DELETE);
 
-        let request = RequestBuilder::<(), P, F, S, R>::new(url, self.rate_limit.clone())
+        let request = RequestBuilder::<X, (), P, F, S, R>::new(url, self.rate_limit.clone())
             .headers(headers)
             .pagination(self.pagination.pagination().clone())
             .filter(self.filter.clone())
@@ -428,24 +411,24 @@ pub trait Connector<P: Pagination, F: Filter, S: Sort, R: Range>
 where
     Query: for<'a> From<&'a F> + for<'a> From<&'a S> + for<'a> From<&'a R>,
 {
-    fn get(&self, route: impl ToString, query: Query) -> Result<Request<(), P, F, S, R>>;
-    fn post<B: Serialize + Clone>(
+    fn get<X: Deserialize<'static>>(
         &self,
         route: impl ToString,
-        query: Query,
-        body: Option<B>,
-    ) -> Result<Request<B, P, F, S, R>>;
-    fn put<B: Serialize + Clone>(
+    ) -> Result<Request<X, (), P, F, S, R>>;
+    fn post<X: Deserialize<'static>, B: Serialize + Clone>(
         &self,
         route: impl ToString,
-        query: Query,
-        body: Option<B>,
-    ) -> Result<Request<B, P, F, S, R>>;
-    fn patch<B: Serialize + Clone>(
+    ) -> Result<Request<X, B, P, F, S, R>>;
+    fn put<X: Deserialize<'static>, B: Serialize + Clone>(
         &self,
         route: impl ToString,
-        query: Query,
-        body: Option<B>,
-    ) -> Result<Request<B, P, F, S, R>>;
-    fn delete(&self, route: impl ToString, query: Query) -> Result<Request<(), P, F, S, R>>;
+    ) -> Result<Request<X, B, P, F, S, R>>;
+    fn patch<X: Deserialize<'static>, B: Serialize + Clone>(
+        &self,
+        route: impl ToString,
+    ) -> Result<Request<X, B, P, F, S, R>>;
+    fn delete<X: Deserialize<'static>>(
+        &self,
+        route: impl ToString,
+    ) -> Result<Request<X, (), P, F, S, R>>;
 }

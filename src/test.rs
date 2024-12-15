@@ -271,8 +271,8 @@ mod tests_api42_v2 {
         let connector = data_connector
             .connect("https://api.intra.42.fr/v2/")
             .await?;
-        let mut request = connector.get("users", Query::new())?;
-        let response = request.send::<Vec<User>>().await?;
+        let request = connector.get("users")?;
+        let response: Vec<User> = request.await?;
         assert_eq!(response.len(), connector.pagination.size);
         Ok(())
     }
@@ -285,9 +285,10 @@ mod tests_api42_v2 {
             .connect("https://api.intra.42.fr/v2/")
             .await?
             .pagination(PaginationRule::default());
-        let mut request =
-            connector.get("users", Query::new().add("filter[primary_campus_id]", 31))?;
-        let response = request.send::<Vec<User>>().await?;
+        let request = connector
+            .get("users")?
+            .query(Query::from("filter[primary_campus_id]", 31));
+        let response: Vec<User> = request.await?;
         assert_eq!(response.len(), connector.pagination.size);
         Ok(())
     }
@@ -300,9 +301,10 @@ mod tests_api42_v2 {
             .connect("https://api.intra.42.fr/v2/")
             .await?
             .pagination(PaginationRule::Fixed(3));
-        let mut request =
-            connector.get("users", Query::new().add("filter[primary_campus_id]", 31))?;
-        let response = request.send::<Vec<User>>().await?;
+        let request = connector
+            .get("users")?
+            .query(Query::from("filter[primary_campus_id]", 31));
+        let response: Vec<User> = request.await?;
         assert_eq!(response.len(), connector.pagination.size * 3);
         Ok(())
     }
@@ -315,9 +317,10 @@ mod tests_api42_v2 {
             .connect("https://api.intra.42.fr/v2/")
             .await?
             .pagination(PaginationRule::OneShot);
-        let mut request =
-            connector.get("users", Query::new().add("filter[primary_campus_id]", 31))?;
-        let response = request.send::<Vec<User>>().await?;
+        let request = connector
+            .get("users")?
+            .query(Query::from("filter[primary_campus_id]", 31));
+        let response: Vec<User> = request.await?;
         assert!(response.len() > 804);
         Ok(())
     }
@@ -330,10 +333,11 @@ mod tests_api42_v2 {
             .connect("https://api.intra.42.fr/v2/")
             .await?
             .pagination(PaginationRule::OneShot);
-        let mut request = connector
-            .get("users", Query::new().add("filter[primary_campus_id]", 31))?
+        let request = connector
+            .get("users")?
+            .query(Query::from("filter[primary_campus_id]", 31))
             .pagination(PaginationRule::default());
-        let response = request.send::<Vec<User>>().await?;
+        let response: Vec<User> = request.await?;
         assert_eq!(response.len(), connector.pagination.size);
         Ok(())
     }
@@ -345,10 +349,11 @@ mod tests_api42_v2 {
         let connector = data_connector
             .connect("https://api.intra.42.fr/v2/")
             .await?;
-        let mut request = connector
-            .get("users", Query::new().add("filter[primary_campus_id]", 31))?
+        let request = connector
+            .get("users")?
+            .query(Query::from("filter[primary_campus_id]", 31))
             .pagination(PaginationRule::Fixed(3));
-        let response = request.send::<Vec<User>>().await?;
+        let response: Vec<User> = request.await?;
         assert_eq!(response.len(), connector.pagination.size * 3);
         Ok(())
     }
@@ -360,10 +365,11 @@ mod tests_api42_v2 {
         let connector = data_connector
             .connect("https://api.intra.42.fr/v2/")
             .await?;
-        let mut request = connector
-            .get("users", Query::new().add("filter[primary_campus_id]", 31))?
+        let request = connector
+            .get("users")?
+            .query(Query::from("filter[primary_campus_id]", 31))
             .pagination(PaginationRule::OneShot);
-        let response = request.send::<Vec<User>>().await?;
+        let response: Vec<User> = request.await?;
         assert!(response.len() > 804);
         Ok(())
     }
@@ -376,7 +382,8 @@ mod tests_api42_v2 {
             .connect("https://api.intra.42.fr/v2/")
             .await?;
         let mut request = connector
-            .get("users", Query::new().add("filter[primary_campus_id]", 31))?
+            .get::<Vec<User>>("users")?
+            .query(Query::from("filter[primary_campus_id]", 31))
             .pagination(PaginationRule::Fixed(2));
         let first_response = request.send::<Vec<User>>().await?;
         assert_eq!(first_response.len(), connector.pagination.size * 2);
@@ -398,7 +405,8 @@ mod tests_api42_v2 {
             .connect("https://api.intra.42.fr/v2/")
             .await?;
         let mut request = connector
-            .get("users", Query::new().add("filter[primary_campus_id]", 31))?
+            .get::<Vec<User>>("users")?
+            .query(Query::from("filter[primary_campus_id]", 31))
             .pagination(PaginationRule::Fixed(2));
         let first_response = request.send::<Vec<User>>().await?;
         assert_eq!(first_response.len(), connector.pagination.size * 2);
@@ -425,8 +433,8 @@ mod tests_api42_v2 {
             .filter("primary_campus_id", vec!["31"])
             .pattern_sort("property")
             .sort("login");
-        let mut request = connector.get("users", Query::new())?;
-        let response = request.send::<Vec<User>>().await?;
+        let request = connector.get("users")?;
+        let response: Vec<User> = request.await?;
         assert!(response
             .first()
             .unwrap()
@@ -447,8 +455,8 @@ mod tests_api42_v2 {
             .filter("primary_campus_id", vec!["31"])
             .pattern_sort("property")
             .sort("-login");
-        let mut request = connector.get("users", Query::new())?;
-        let response = request.send::<Vec<User>>().await?;
+        let request = connector.get("users")?;
+        let response: Vec<User> = request.await?;
         assert!(response
             .first()
             .unwrap()
@@ -469,10 +477,8 @@ mod tests_api42_v2 {
             .filter("primary_campus_id", vec!["31"])
             .pattern_sort("property")
             .sort("login");
-        let mut request = connector
-            .get("users", Query::new())?
-            .set_sort(SortTest::default());
-        let response = request.send::<Vec<User>>().await?;
+        let request = connector.get("users")?.set_sort(SortTest::default());
+        let response: Vec<User> = request.await?;
         assert!(
             response
                 .first()
@@ -498,11 +504,11 @@ mod tests_api42_v2 {
             .pagination(PaginationRule::default())
             .pattern_filter("filter[property]")
             .filter("primary_campus_id", vec!["31"]);
-        let mut request = connector
-            .get("users", Query::new())?
+        let request = connector
+            .get("users")?
             .pattern_sort("property")
             .sort("login");
-        let response = request.send::<Vec<User>>().await?;
+        let response: Vec<User> = request.await?;
         assert!(response
             .first()
             .unwrap()
@@ -521,11 +527,11 @@ mod tests_api42_v2 {
             .pagination(PaginationRule::default())
             .pattern_filter("filter[property]")
             .filter("primary_campus_id", vec!["31"]);
-        let mut request = connector
-            .get("users", Query::new())?
+        let request = connector
+            .get("users")?
             .pattern_sort("property")
             .sort("-login");
-        let response = request.send::<Vec<User>>().await?;
+        let response: Vec<User> = request.await?;
         assert!(response
             .first()
             .unwrap()
@@ -546,11 +552,11 @@ mod tests_api42_v2 {
             .filter("primary_campus_id", vec!["31"])
             .pattern_sort("property")
             .sort("-login");
-        let mut request = connector
-            .get("users", Query::new())?
+        let request = connector
+            .get("users")?
             .pattern_sort("property")
             .sort("login");
-        let response = request.send::<Vec<User>>().await?;
+        let response: Vec<User> = request.await?;
         assert!(response
             .first()
             .unwrap()
@@ -571,11 +577,11 @@ mod tests_api42_v2 {
             .filter("primary_campus_id", vec!["31"])
             .pattern_sort("property")
             .sort("login");
-        let mut request = connector
-            .get("users", Query::new())?
+        let request = connector
+            .get("users")?
             .pattern_sort("property")
             .sort("-login");
-        let response = request.send::<Vec<User>>().await?;
+        let response: Vec<User> = request.await?;
         assert!(response
             .first()
             .unwrap()
@@ -595,8 +601,8 @@ mod tests_api42_v2 {
             .pattern_filter("filter[property]")
             .filter("primary_campus_id", vec!["31"])
             .filter("login", vec!["vnaud"]);
-        let mut request = connector.get("users", Query::new())?;
-        let response = request.send::<Vec<User>>().await?;
+        let request = connector.get("users")?;
+        let response: Vec<User> = request.await?;
         assert_eq!(response.len(), 1);
         Ok(())
     }
@@ -609,12 +615,12 @@ mod tests_api42_v2 {
             .connect("https://api.intra.42.fr/v2/")
             .await?
             .pagination(PaginationRule::default());
-        let mut request = connector
-            .get("users", Query::new())?
+        let request = connector
+            .get("users")?
             .pattern_filter("filter[property]")
             .filter("primary_campus_id", vec!["31"])
             .filter("login", vec!["vnaud"]);
-        let response = request.send::<Vec<User>>().await?;
+        let response: Vec<User> = request.await?;
         assert_eq!(response.len(), 1);
         Ok(())
     }
@@ -630,12 +636,12 @@ mod tests_api42_v2 {
             .pattern_filter("filter[property]")
             .filter("primary_campus_id", vec!["31"])
             .filter("login", vec!["vnaud"]);
-        let mut request = connector
-            .get("users", Query::new())?
+        let request = connector
+            .get("users")?
             .pattern_filter("filter[property]")
             .filter("primary_campus_id", vec!["31"])
             .filter("login", vec!["vnaud,pmieuzet"]);
-        let response = request.send::<Vec<User>>().await?;
+        let response: Vec<User> = request.await?;
         assert_eq!(response.len(), 2);
         Ok(())
     }
@@ -652,7 +658,7 @@ mod tests_api42_v2 {
             .filter("primary_campus_id", vec!["31"])
             .filter("login", vec!["vnaud"]);
         let mut request = connector
-            .get("users", Query::new())?
+            .get::<Vec<User>>("users")?
             .set_filter(FilterTest::default());
         let response = request.send::<Vec<User>>().await?;
         assert_eq!(response.len(), request.pagination.size);
@@ -669,8 +675,8 @@ mod tests_api42_v2 {
             .pagination(PaginationRule::default())
             .pattern_range("range[property]")
             .range("login", "einkaya", "eissarti");
-        let mut request = connector.get("users", Query::new())?;
-        let response = request.send::<Vec<User>>().await?;
+        let request = connector.get("users")?;
+        let response: Vec<User> = request.await?;
         assert_eq!(response.len(), 21);
         Ok(())
     }
@@ -683,11 +689,11 @@ mod tests_api42_v2 {
             .connect("https://api.intra.42.fr/v2/")
             .await?
             .pagination(PaginationRule::default());
-        let mut request = connector
-            .get("users", Query::new())?
+        let request = connector
+            .get("users")?
             .pattern_range("range[property]")
             .range("login", "einkaya", "eissarti");
-        let response = request.send::<Vec<User>>().await?;
+        let response: Vec<User> = request.await?;
         assert_eq!(response.len(), 21);
         Ok(())
     }
@@ -702,11 +708,9 @@ mod tests_api42_v2 {
             .pagination(PaginationRule::default())
             .pattern_range("range[property]")
             .range("login", "einkaya", "eissarti");
-        let mut request = connector
-            .get("users", Query::new())?
-            .range("login", "zhabri", "ziale");
-        let response = request.send::<Vec<User>>().await?;
-        assert_eq!(response.len(), 49);
+        let request = connector.get("users")?.range("login", "zhabri", "ziale");
+        let response: Vec<User> = request.await?;
+        assert_eq!(response.len(), 59);
         Ok(())
     }
 
@@ -721,7 +725,7 @@ mod tests_api42_v2 {
             .pattern_range("range[property]")
             .range("login", "einkaya", "eissarti");
         let mut request = connector
-            .get("users", Query::new())?
+            .get::<Vec<User>>("users")?
             .set_range(RangeTest::default());
         let response = request.send::<Vec<User>>().await?;
         assert_eq!(response.len(), request.pagination.size);
@@ -767,8 +771,10 @@ mod tests_rest_country {
         let connector = CountryConnector::new()
             .connect("https://restcountries.com/v3.1/")
             .await?;
-        let mut request = connector.get("name/france", Query::new().add("fields", "name"))?;
-        let response = request.send::<Country>().await?;
+        let request = connector
+            .get("name/france")?
+            .query(Query::from("fields", "name"));
+        let response: Country = request.await?;
         assert_eq!(response.name.name.common, "France");
         Ok(())
     }
@@ -779,8 +785,8 @@ mod tests_rest_country {
         let connector = CountryConnector::new()
             .connect("https://restcountries.com/v3.1/")
             .await?;
-        let mut request = connector.get("all", Query::new().add("fields", "name"))?;
-        let response = request.send::<Vec<serde_json::Value>>().await?;
+        let request = connector.get("all")?.query(Query::from("fields", "name"));
+        let response: Vec<serde_json::Value> = request.await?;
         assert_eq!(response.len(), 250);
         Ok(())
     }
@@ -838,8 +844,8 @@ mod tests_api42_v3 {
         let connector = data_connector
             .connect("https://chronos.42.fr/api/v1/")
             .await?;
-        let mut request = connector.get("users/vnaud/attendances", Query::new())?;
-        let response = request.send::<Vec<Attendance>>().await?;
+        let request = connector.get("users/vnaud/attendances")?;
+        let response: Vec<Attendance> = request.await?;
         response.iter().all(|attendance| {
             assert_eq!(attendance.user_id, 108323);
             true
