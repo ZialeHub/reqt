@@ -100,7 +100,7 @@ The rate limit can be set through the [ApiBuilder](connector_builder::ApiBuilder
 
 To implement your own connector with ease, you have in your hands the following macros:
 
-```rust
+```rust,ignore
 #[derive(Debug, Clone, Deserialize, Oauth2)]
 #[pagination(PaginationTest)]
 #[filter(FilterTest)]
