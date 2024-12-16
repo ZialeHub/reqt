@@ -250,6 +250,48 @@ where
     }
 }
 
+fn build_request<
+    X: Deserialize<'static>,
+    B: Serialize + Clone,
+    P: Pagination,
+    F: Filter,
+    S: Sort,
+    R: Range,
+>(
+    api: &Api<P, F, S, R>,
+    route: impl ToString,
+    method: Method,
+) -> Result<Request<X, B, P, F, S, R>>
+where
+    Query: for<'a> From<&'a F> + for<'a> From<&'a S> + for<'a> From<&'a R>,
+{
+    let mut headers = HeaderMap::new();
+
+    if method == Method::POST || method == Method::PUT || method == Method::PATCH {
+        headers.insert(
+            reqwest::header::CONTENT_TYPE,
+            reqwest::header::HeaderValue::from_str("application/json")?,
+        );
+    }
+
+    api.authorization.header_value(&mut headers)?;
+
+    let url = RequestUrl::new(&api.endpoint)
+        .route(route.to_string())
+        .method(Method::GET);
+
+    Ok(
+        RequestBuilder::<X, B, P, F, S, R>::new(url, api.rate_limit.clone())
+            .headers(headers)
+            .pagination(api.pagination.pagination().clone())
+            .filter(api.filter.clone())
+            .sort(api.sort.clone())
+            .range(api.range.clone())
+            .force_limit(api.force_limit)
+            .build(),
+    )
+}
+
 impl<P: Pagination, F: Filter, S: Sort, R: Range> Connector<P, F, S, R> for Api<P, F, S, R>
 where
     Query: for<'a> From<&'a F> + for<'a> From<&'a S> + for<'a> From<&'a R>,
@@ -258,135 +300,35 @@ where
         &self,
         route: impl ToString,
     ) -> Result<Request<X, (), P, F, S, R>> {
-        let mut headers = HeaderMap::new();
-
-        self.authorization.header_value(&mut headers)?;
-
-        let url = RequestUrl::new(&self.endpoint)
-            .route(route.to_string())
-            .method(Method::GET);
-
-        let request = RequestBuilder::<X, (), P, F, S, R>::new(url, self.rate_limit.clone())
-            .headers(headers)
-            .pagination(self.pagination.pagination().clone())
-            .filter(self.filter.clone())
-            .sort(self.sort.clone())
-            .range(self.range.clone())
-            .force_limit(self.force_limit)
-            .build();
-
-        Ok(request)
+        build_request(self, route, Method::GET)
     }
 
     fn post<X: Deserialize<'static>, B: Serialize + Clone>(
         &self,
         route: impl ToString,
     ) -> Result<Request<X, B, P, F, S, R>> {
-        let mut headers = HeaderMap::new();
-
-        self.authorization.header_value(&mut headers)?;
-
-        headers.insert(
-            reqwest::header::CONTENT_TYPE,
-            reqwest::header::HeaderValue::from_str("application/json")?,
-        );
-
-        let url = RequestUrl::new(&self.endpoint)
-            .route(route.to_string())
-            .method(Method::POST);
-
-        let request = RequestBuilder::<X, B, P, F, S, R>::new(url, self.rate_limit.clone())
-            .headers(headers)
-            .pagination(self.pagination.pagination().clone())
-            .filter(self.filter.clone())
-            .sort(self.sort.clone())
-            .range(self.range.clone())
-            .force_limit(self.force_limit)
-            .build();
-
-        Ok(request)
+        build_request(self, route, Method::POST)
     }
 
     fn put<X: Deserialize<'static>, B: Serialize + Clone>(
         &self,
         route: impl ToString,
     ) -> Result<Request<X, B, P, F, S, R>> {
-        let mut headers = HeaderMap::new();
-
-        self.authorization.header_value(&mut headers)?;
-
-        headers.insert(
-            reqwest::header::CONTENT_TYPE,
-            reqwest::header::HeaderValue::from_str("application/json")?,
-        );
-
-        let url = RequestUrl::new(&self.endpoint)
-            .route(route.to_string())
-            .method(Method::PUT);
-
-        let request = RequestBuilder::<X, B, P, F, S, R>::new(url, self.rate_limit.clone())
-            .headers(headers)
-            .pagination(self.pagination.pagination().clone())
-            .filter(self.filter.clone())
-            .sort(self.sort.clone())
-            .range(self.range.clone())
-            .force_limit(self.force_limit)
-            .build();
-
-        Ok(request)
+        build_request(self, route, Method::PUT)
     }
 
     fn patch<X: Deserialize<'static>, B: Serialize + Clone>(
         &self,
         route: impl ToString,
     ) -> Result<Request<X, B, P, F, S, R>> {
-        let mut headers = HeaderMap::new();
-
-        self.authorization.header_value(&mut headers)?;
-
-        headers.insert(
-            reqwest::header::CONTENT_TYPE,
-            reqwest::header::HeaderValue::from_str("application/json")?,
-        );
-
-        let url = RequestUrl::new(&self.endpoint)
-            .route(route.to_string())
-            .method(Method::PATCH);
-
-        let request = RequestBuilder::<X, B, P, F, S, R>::new(url, self.rate_limit.clone())
-            .headers(headers)
-            .pagination(self.pagination.pagination().clone())
-            .filter(self.filter.clone())
-            .sort(self.sort.clone())
-            .range(self.range.clone())
-            .force_limit(self.force_limit)
-            .build();
-
-        Ok(request)
+        build_request(self, route, Method::PATCH)
     }
 
     fn delete<X: Deserialize<'static>>(
         &self,
         route: impl ToString,
     ) -> Result<Request<X, (), P, F, S, R>> {
-        let mut headers = HeaderMap::new();
-
-        self.authorization.header_value(&mut headers)?;
-
-        let url = RequestUrl::new(&self.endpoint)
-            .route(route.to_string())
-            .method(Method::DELETE);
-
-        let request = RequestBuilder::<X, (), P, F, S, R>::new(url, self.rate_limit.clone())
-            .headers(headers)
-            .pagination(self.pagination.pagination().clone())
-            .filter(self.filter.clone())
-            .sort(self.sort.clone())
-            .range(self.range.clone())
-            .force_limit(self.force_limit)
-            .build();
-
-        Ok(request)
+        build_request(self, route, Method::DELETE)
     }
 }
 
