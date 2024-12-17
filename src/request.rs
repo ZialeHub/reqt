@@ -106,6 +106,17 @@ where
         }
     }
 
+    fn get_number_of_elements(headers: &HeaderMap) -> u32 {
+        match headers
+            .get("X-Total")
+            .and_then(|v| v.to_str().ok())
+            .and_then(|s| s.parse::<f32>().ok())
+        {
+            Some(v) => v as u32,
+            None => 1,
+        }
+    }
+
     /// Send the request and parse the response into type 'T'
     pub async fn send<T>(&mut self) -> Result<T>
     where
@@ -123,7 +134,14 @@ where
             Ok(mut rate) => rate.update(first_response.headers()),
             Err(e) => eprintln!("Rate limiter error: {:?}", e),
         }
-        self.parse_response_array(request, first_response).await
+        let number_of_elements = Self::get_number_of_elements(first_response.headers());
+        match number_of_elements {
+            1 => Self::parse_response(first_response).await,
+            _ => {
+                self.parse_response_array::<T>(request, first_response)
+                    .await
+            }
+        }
     }
 
     fn build_reqwest<T>(&self, body: Option<T>) -> Result<reqwest::Request>
