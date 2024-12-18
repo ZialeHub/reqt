@@ -287,7 +287,7 @@ mod tests_api42_v2 {
             .pagination(PaginationRule::default());
         let request = connector
             .get("users")?
-            .query(Query::from("filter[primary_campus_id]", 31));
+            .query(("filter[primary_campus_id]", 31));
         let response: Vec<User> = request.await?;
         assert_eq!(response.len(), connector.pagination.size);
         Ok(())
@@ -303,7 +303,7 @@ mod tests_api42_v2 {
             .pagination(PaginationRule::Fixed(3));
         let request = connector
             .get("users")?
-            .query(Query::from("filter[primary_campus_id]", 31));
+            .query(("filter[primary_campus_id]", 31));
         let response: Vec<User> = request.await?;
         assert_eq!(response.len(), connector.pagination.size * 3);
         Ok(())
@@ -319,7 +319,7 @@ mod tests_api42_v2 {
             .pagination(PaginationRule::OneShot);
         let request = connector
             .get("users")?
-            .query(Query::from("filter[primary_campus_id]", 31));
+            .query(("filter[primary_campus_id]", 31));
         let response: Vec<User> = request.await?;
         assert!(response.len() > 804);
         Ok(())
@@ -335,7 +335,7 @@ mod tests_api42_v2 {
             .pagination(PaginationRule::OneShot);
         let request = connector
             .get("users")?
-            .query(Query::from("filter[primary_campus_id]", 31))
+            .query(("filter[primary_campus_id]", 31))
             .pagination(PaginationRule::default());
         let response: Vec<User> = request.await?;
         assert_eq!(response.len(), connector.pagination.size);
@@ -351,7 +351,7 @@ mod tests_api42_v2 {
             .await?;
         let request = connector
             .get("users")?
-            .query(Query::from("filter[primary_campus_id]", 31))
+            .query(("filter[primary_campus_id]", 31))
             .pagination(PaginationRule::Fixed(3));
         let response: Vec<User> = request.await?;
         assert_eq!(response.len(), connector.pagination.size * 3);
@@ -367,7 +367,7 @@ mod tests_api42_v2 {
             .await?;
         let request = connector
             .get("users")?
-            .query(Query::from("filter[primary_campus_id]", 31))
+            .query(("filter[primary_campus_id]", 31))
             .pagination(PaginationRule::OneShot);
         let response: Vec<User> = request.await?;
         assert!(response.len() > 804);
@@ -383,7 +383,7 @@ mod tests_api42_v2 {
             .await?;
         let mut request = connector
             .get::<Vec<User>>("users")?
-            .query(Query::from("filter[primary_campus_id]", 31))
+            .query(("filter[primary_campus_id]", 31))
             .pagination(PaginationRule::Fixed(2));
         let first_response = request.send::<Vec<User>>().await?;
         assert_eq!(first_response.len(), connector.pagination.size * 2);
@@ -406,7 +406,7 @@ mod tests_api42_v2 {
             .await?;
         let mut request = connector
             .get::<Vec<User>>("users")?
-            .query(Query::from("filter[primary_campus_id]", 31))
+            .query(("filter[primary_campus_id]", 31))
             .pagination(PaginationRule::Fixed(2));
         let first_response = request.send::<Vec<User>>().await?;
         assert_eq!(first_response.len(), connector.pagination.size * 2);
@@ -771,9 +771,7 @@ mod tests_rest_country {
         let connector = CountryConnector::new()
             .connect("https://restcountries.com/v3.1/")
             .await?;
-        let request = connector
-            .get("name/france")?
-            .query(Query::from("fields", "name"));
+        let request = connector.get("name/france")?.query(("fields", "name"));
         let response: Country = request.await?;
         assert_eq!(response.name.name.common, "France");
         Ok(())
@@ -785,7 +783,7 @@ mod tests_rest_country {
         let connector = CountryConnector::new()
             .connect("https://restcountries.com/v3.1/")
             .await?;
-        let request = connector.get("all")?.query(Query::from("fields", "name"));
+        let request = connector.get("all")?.query(("fields", "name"));
         let response: Vec<serde_json::Value> = request.await?;
         assert_eq!(response.len(), 250);
         Ok(())

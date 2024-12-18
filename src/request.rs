@@ -404,8 +404,8 @@ where
     }
 
     /// Add a query to the request
-    pub fn query(mut self, query: Query) -> Self {
-        self.request_url = self.request_url.join_query(query);
+    pub fn query(mut self, query: impl Into<Query>) -> Self {
+        self.request_url = self.request_url.join_query(query.into());
         self
     }
 }
