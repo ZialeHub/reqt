@@ -47,8 +47,14 @@ impl RequestUrl {
     }
 
     /// Set the query to be used in the request
-    pub fn query(mut self, query: Query) -> Self {
-        self.query = query;
+    pub fn query(mut self, query: impl Into<Query>) -> Self {
+        self.query = query.into();
+        self
+    }
+
+    /// Join two queries into one
+    pub fn join_query(mut self, query: Query) -> Self {
+        self.query = self.query.join(query);
         self
     }
 
