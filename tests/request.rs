@@ -1,6 +1,5 @@
 use fake::{Dummy, Fake, Faker};
 use httpmock::MockServer;
-use reqt::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Dummy)]
