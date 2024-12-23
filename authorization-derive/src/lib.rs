@@ -140,8 +140,9 @@ fn get_attribute_types(ast: &syn::DeriveInput) -> (Type, Type, Type, Type) {
 /// Only impl the Authorization trait for the struct, with the default implementation.
 fn impl_authorization_derive(ast: &syn::DeriveInput) -> TokenStream {
     let name = &ast.ident;
+    let (pagination, filter, sort, range) = get_attribute_types(ast);
     let gen = quote! {
-        impl Authorization for #name {}
+        impl Authorization<#pagination, #filter, #sort, #range> for #name {}
     };
     gen.into()
 }

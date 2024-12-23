@@ -298,6 +298,10 @@ where
         serde_json::from_value::<T>(json_values).map_err(ApiError::ResponseParse)
     }
 
+    pub fn reset_pagination(&mut self) {
+        self.pagination.reset();
+    }
+
     /// Pagination setter to override the Api pagination
     pub fn pagination(mut self, pagination: PaginationRule) -> Self {
         self.pagination = self.pagination.set_pagination(pagination);
