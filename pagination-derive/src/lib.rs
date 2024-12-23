@@ -34,15 +34,20 @@ fn impl_pagination_derive(ast: &syn::DeriveInput) -> TokenStream {
             }
             fn get_current_page(&self) -> Query {
                 Query::new()
+                    .add("page[number]", self.current_page)
+                    .add("page[size]", self.size)
             }
             fn get_size(&self) -> Query {
-                Query::new()
+                Query::new().add("page[size]", self.size)
             }
             fn next(&mut self) {
                 self.current_page += 1;
             }
             fn get_next_page(&mut self) -> Query {
+                self.current_page += 1;
                 Query::new()
+                    .add("page[number]", self.current_page)
+                    .add("page[size]", self.size)
             }
         }
     };

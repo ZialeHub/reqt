@@ -9,66 +9,6 @@ struct User {
     name: String,
 }
 
-#[derive(Debug, Clone)]
-struct PaginationTest {
-    pub size: usize,
-    pub current_page: usize,
-    pub pagination: PaginationRule,
-}
-impl Default for PaginationTest {
-    fn default() -> Self {
-        Self {
-            size: 100,
-            current_page: 1,
-            pagination: PaginationRule::default(),
-        }
-    }
-}
-impl Pagination for PaginationTest {
-    fn size(mut self, size: usize) -> Self {
-        self.size = size;
-        self
-    }
-
-    fn set_pagination(mut self, pagination: PaginationRule) -> Self {
-        self.pagination = pagination;
-        self
-    }
-
-    fn pagination(&self) -> &PaginationRule {
-        &self.pagination
-    }
-
-    fn current_page(&self) -> usize {
-        self.current_page
-    }
-
-    fn get_current_page(&self) -> Query {
-        Query::new()
-            .add("page[number]", self.current_page)
-            .add("page[size]", self.size)
-    }
-
-    fn get_size(&self) -> Query {
-        Query::new().add("page[size]", self.size)
-    }
-
-    fn next(&mut self) {
-        self.current_page += 1;
-    }
-
-    fn get_next_page(&mut self) -> Query {
-        self.current_page += 1;
-        Query::new()
-            .add("page[number]", self.current_page)
-            .add("page[size]", self.size)
-    }
-
-    fn reset(&mut self) {
-        self.current_page = 1;
-    }
-}
-
 fn mock_pages<'de, T: Clone + Serialize + Deserialize<'de>>(
     server: &MockServer,
     array: Vec<T>,
@@ -125,7 +65,7 @@ mod request_tests {
     #[tokio::test]
     async fn request_users_page_1() -> Result<()> {
         let server = mock_server_users();
-        let api: Api<PaginationTest> = ApiBuilder::new(server.base_url()).build();
+        let api: Api = ApiBuilder::new(server.base_url()).build();
         let users: Vec<User> = api.get("/users")?.await?;
         assert_eq!(users.len(), 100);
         Ok(())
@@ -134,7 +74,7 @@ mod request_tests {
     #[tokio::test]
     async fn request_users_full_pages() -> Result<()> {
         let server = mock_server_users();
-        let api: Api<PaginationTest> = ApiBuilder::new(server.base_url()).build();
+        let api: Api = ApiBuilder::new(server.base_url()).build();
         let users: Vec<User> = api
             .get("/users")?
             .pagination(PaginationRule::OneShot)
