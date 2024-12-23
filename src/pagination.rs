@@ -45,7 +45,7 @@ pub struct RequestPagination {
 impl Default for RequestPagination {
     fn default() -> Self {
         Self {
-            size: 1,
+            size: 100,
             current_page: 1,
             pagination: PaginationRule::default(),
         }
