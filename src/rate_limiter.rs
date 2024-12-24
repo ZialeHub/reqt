@@ -121,7 +121,7 @@ impl RateLimiter {
                 return;
             } else {
                 self.is_asleep = true;
-                eprintln!("Rate limit exceeded, sleeping for {:?}", self.period);
+                log::info!("Rate limit exceeded, sleeping for {:?}", self.period);
                 self.sleep();
                 self.is_asleep = false;
             }

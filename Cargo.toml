@@ -21,12 +21,13 @@ thiserror = "2.0.3"
 strum = { version = "0.26.3", features = ["derive"] }
 url = "2.5.2"
 base64 = "0.22.1"
+chrono = "0.4.19"
+log = "0.4.22"
 authorization-derive = { path = "./authorization-derive" }
 pagination-derive = { path = "./pagination-derive" }
 filter-derive = { path = "./filter-derive" }
 sort-derive = { path = "./sort-derive" }
 range-derive = { path = "./range-derive" }
-chrono = "0.4.19"
 
 [dev-dependencies]
 serial_test = "3.1.1"
