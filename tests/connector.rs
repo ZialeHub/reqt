@@ -74,7 +74,6 @@ mod connector_tests {
         fn from(value: &RangeTest) -> Self {
             let mut query = Query::new();
             for (range, values) in value.ranges.iter() {
-                eprintln!("{}, {}", range, values);
                 query = query.add(range, values);
             }
             query

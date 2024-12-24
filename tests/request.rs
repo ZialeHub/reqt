@@ -186,7 +186,6 @@ mod request_tests {
         fn from(value: &RangeTest) -> Self {
             let mut query = Query::new();
             for (range, values) in value.ranges.iter() {
-                eprintln!("{}, {}", range, values);
                 query = query.add(range, values);
             }
             query
@@ -515,11 +514,6 @@ mod request_tests {
             .sort("name");
         let request = api.get("/users")?;
         let response: Vec<User> = request.await?;
-        eprintln!(
-            "ASC {}, {}",
-            response.first().unwrap().name,
-            response.last().unwrap().name
-        );
         assert!(response
             .first()
             .unwrap()
@@ -542,11 +536,6 @@ mod request_tests {
             .sort("-name");
         let request = api.get("/users")?;
         let response: Vec<User> = request.await?;
-        eprintln!(
-            "DESC {}, {}",
-            response.first().unwrap().name,
-            response.last().unwrap().name
-        );
         assert!(response
             .first()
             .unwrap()
@@ -569,11 +558,6 @@ mod request_tests {
             .sort("name");
         let request = api.get("/users")?.set_sort(SortTest::default());
         let response: Vec<User> = request.await?;
-        eprintln!(
-            "ASC RESET {}, {}",
-            response.first().unwrap().name,
-            response.last().unwrap().name
-        );
         assert!(
             response
                 .first()
@@ -601,11 +585,6 @@ mod request_tests {
             .filter("primary_campus_id", vec!["31"]);
         let request = api.get("/users")?.pattern_sort("property").sort("name");
         let response: Vec<User> = request.await?;
-        eprintln!(
-            "REQUEST ASC {}, {}",
-            response.first().unwrap().name,
-            response.last().unwrap().name
-        );
         assert!(response
             .first()
             .unwrap()
@@ -626,11 +605,6 @@ mod request_tests {
             .filter("primary_campus_id", vec!["31"]);
         let request = api.get("/users")?.pattern_sort("property").sort("-name");
         let response: Vec<User> = request.await?;
-        eprintln!(
-            "REQUEST DESC {}, {}",
-            response.first().unwrap().name,
-            response.last().unwrap().name
-        );
         assert!(response
             .first()
             .unwrap()
@@ -653,11 +627,6 @@ mod request_tests {
             .sort("-name");
         let request = api.get("/users")?.pattern_sort("property").sort("name");
         let response: Vec<User> = request.await?;
-        eprintln!(
-            "OVERRIDE ASC {}, {}",
-            response.first().unwrap().name,
-            response.last().unwrap().name
-        );
         assert!(response
             .first()
             .unwrap()
@@ -680,11 +649,6 @@ mod request_tests {
             .sort("name");
         let request = api.get("/users")?.pattern_sort("property").sort("-name");
         let response: Vec<User> = request.await?;
-        eprintln!(
-            "OVERRIDE DESC {}, {}",
-            response.first().unwrap().name,
-            response.last().unwrap().name
-        );
         assert!(response
             .first()
             .unwrap()
