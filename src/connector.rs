@@ -227,7 +227,7 @@ where
     pub fn rate_limit(self, rate_limit: u32) -> Self {
         match self.rate_limit.write() {
             Ok(mut rate) => rate.limit = rate_limit,
-            Err(e) => eprintln!("Rate limiter error: {:?}", e),
+            Err(e) => log::error!("Rate limiter error: {:?}", e),
         }
         self
     }
@@ -236,7 +236,7 @@ where
     pub fn rate_period(self, rate_period: TimePeriod) -> Self {
         match self.rate_limit.write() {
             Ok(mut rate) => rate.period = rate_period,
-            Err(e) => eprintln!("Rate limiter error: {:?}", e),
+            Err(e) => log::error!("Rate limiter error: {:?}", e),
         }
         self
     }

@@ -413,7 +413,7 @@ fn keycloak_authorization_impl(
                     .await
                 {
                     Ok(response) => {
-                        eprintln!("{:?}", response);
+                        log::info!("{:?}", response);
                         match response.status() {
                             StatusCode::OK
                             | StatusCode::CREATED
