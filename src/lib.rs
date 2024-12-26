@@ -13,7 +13,6 @@ pub mod request;
 pub mod request_builder;
 pub mod request_url;
 pub mod sort;
-pub mod test;
 
 #[doc(inline)]
 pub use pagination_derive::*;

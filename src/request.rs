@@ -277,6 +277,7 @@ where
                     .as_url(&self.pagination, &self.filter, &self.sort, &self.range)?;
 
             let next_request = Self::build_next_reqwest(&request, next_url)?;
+            eprintln!("{:?}", next_request);
 
             let next_page_response = Self::execute_reqwest(&next_request, self.force_limit).await?;
             match self.rate_limiter.write() {
@@ -295,6 +296,10 @@ where
             self.pagination.next();
         }
         serde_json::from_value::<T>(json_values).map_err(ApiError::ResponseParse)
+    }
+
+    pub fn reset_pagination(&mut self) {
+        self.pagination.reset();
     }
 
     /// Pagination setter to override the Api pagination
