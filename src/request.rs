@@ -125,14 +125,14 @@ where
     {
         match self.rate_limiter.write() {
             Ok(mut rate) => rate.request(),
-            Err(e) => eprintln!("Rate limiter error: {:?}", e),
+            Err(e) => log::error!("Rate limiter error: {:?}", e),
         }
         let request = self.build_reqwest::<B>(self.body.clone())?;
-        eprintln!("{:?}", request);
+        log::info!("{:?}", request);
         let first_response = Self::execute_reqwest(&request, self.force_limit).await?;
         match self.rate_limiter.write() {
             Ok(mut rate) => rate.update(first_response.headers()),
-            Err(e) => eprintln!("Rate limiter error: {:?}", e),
+            Err(e) => log::error!("Rate limiter error: {:?}", e),
         }
         let number_of_elements = Self::get_number_of_elements(first_response.headers());
         match number_of_elements {
@@ -277,12 +277,12 @@ where
                     .as_url(&self.pagination, &self.filter, &self.sort, &self.range)?;
 
             let next_request = Self::build_next_reqwest(&request, next_url)?;
-            eprintln!("{:?}", next_request);
+            log::info!("{:?}", next_request);
 
             let next_page_response = Self::execute_reqwest(&next_request, self.force_limit).await?;
             match self.rate_limiter.write() {
                 Ok(mut rate) => rate.update(next_page_response.headers()),
-                Err(e) => eprintln!("Rate limiter error: {:?}", e),
+                Err(e) => log::error!("Rate limiter error: {:?}", e),
             }
 
             match &mut json_values {
