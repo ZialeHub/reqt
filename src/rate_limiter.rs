@@ -82,7 +82,7 @@ impl RateLimiter {
             return;
         }
         for period in TimePeriod::iter() {
-            if let Some(limit) = headers.get(format!("x-{}-ratelimit-limit", period)) {
+            if let Some(limit) = headers.get(format!("x-{period}-ratelimit-limit")) {
                 let Ok(limit) = limit.to_str().unwrap().parse::<u32>() else {
                     return;
                 };

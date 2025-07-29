@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod connector_tests {
-    use base64::{engine::general_purpose, Engine};
-    use reqt::{prelude::*, Keycloak};
+    use base64::{Engine, engine::general_purpose};
+    use reqt::{Keycloak, prelude::*};
     use reqwest::{Client, StatusCode};
     use serde::Deserialize;
     use std::collections::HashMap;
@@ -130,10 +130,10 @@ mod connector_tests {
 
             if let Some(old_sort) = self.sorts.iter_mut().find(|s| {
                 s == &&sort
-                    || s == &&format!("-{}", sort)
-                    || s == &&format!("+{}", sort)
-                    || sort == format!("+{}", s)
-                    || sort == format!("-{}", s)
+                    || s == &&format!("-{sort}")
+                    || s == &&format!("+{sort}")
+                    || sort == format!("+{s}")
+                    || sort == format!("-{s}")
             }) {
                 *old_sort = sort;
                 return self;

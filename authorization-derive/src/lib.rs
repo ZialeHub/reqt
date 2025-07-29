@@ -154,7 +154,7 @@ fn impl_authorization_derive(ast: &syn::DeriveInput) -> TokenStream {
 fn impl_oauth2_derive(ast: &syn::DeriveInput) -> TokenStream {
     let name = &ast.ident;
     let (pagination, filter, sort, range) = get_attribute_types(ast);
-    let token_struct_name = syn::Ident::new(&format!("{}TokenOAuth2", name), name.span());
+    let token_struct_name = syn::Ident::new(&format!("{name}TokenOAuth2"), name.span());
     let gen = quote! {
         #[derive(Deserialize)]
         struct #token_struct_name {
@@ -168,7 +168,7 @@ fn impl_oauth2_derive(ast: &syn::DeriveInput) -> TokenStream {
                 let scopes = self
                     .scopes
                     .iter()
-                    .fold(String::new(), |acc, scope| format!("{} {}", acc, scope));
+                    .fold(String::new(), |acc, scope| format!("{acc} {scope}" scope));
                 let mut params = HashMap::new();
                 params.insert("grant_type", "client_credentials");
                 params.insert("client_id", &self.client_id);
@@ -240,7 +240,7 @@ fn impl_bearer_derive(ast: &syn::DeriveInput) -> TokenStream {
                 let connector = ApiBuilder::new(url);
                 let client = Client::new();
 
-                Ok(conector.bearer(&self.secret).build())
+                Ok(connector.bearer(&self.secret).build())
             }
         }
     };
@@ -260,7 +260,7 @@ fn impl_apikey_derive(ast: &syn::DeriveInput) -> TokenStream {
                 let connector = ApiBuilder::new(url);
                 let client = Client::new();
 
-                Ok(conector.apikey(&self.key).build())
+                Ok(connector.apikey(&self.key).build())
             }
         }
     };
@@ -274,7 +274,7 @@ fn impl_apikey_derive(ast: &syn::DeriveInput) -> TokenStream {
 fn impl_oidc_derive(ast: &syn::DeriveInput) -> TokenStream {
     let name = &ast.ident;
     let (pagination, filter, sort, range) = get_attribute_types(ast);
-    let token_struct_name = syn::Ident::new(&format!("{}TokenOIDC", name), name.span());
+    let token_struct_name = syn::Ident::new(&format!("{name}TokenOIDC"), name.span());
     let gen = quote! {
         #[derive(Deserialize)]
         struct #token_struct_name {
@@ -288,7 +288,7 @@ fn impl_oidc_derive(ast: &syn::DeriveInput) -> TokenStream {
                 let scopes = self
                     .scopes
                     .iter()
-                    .fold(String::new(), |acc, scope| format!("{} {}", acc, scope));
+                    .fold(String::new(), |acc, scope| format!("{acc} {scope}"));
                 let mut params = HashMap::new();
                 params.insert("grant_type", "client_credentials");
                 params.insert("client_id", &self.client_id);
@@ -382,7 +382,7 @@ fn keycloak_authorization_impl(
     range: Type,
     name: &Ident,
 ) -> TokenStream {
-    let token_struct_name = syn::Ident::new(&format!("{}TokenKeycloak", name), name.span());
+    let token_struct_name = syn::Ident::new(&format!("{name}TokenKeycloak"), name.span());
     let gen = quote! {
         #[derive(Deserialize)]
         struct #token_struct_name {

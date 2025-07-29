@@ -77,7 +77,7 @@ impl RequestUrl {
         query = query.join(sort.into());
         query = query.join(range.into());
 
-        Url::parse(&format!("{}{}{}", self.endpoint, self.route, query))
+        Url::parse(&format!("{}{}{query}", self.endpoint, self.route))
             .map_err(ApiError::WrongUrlFormat)
     }
 }

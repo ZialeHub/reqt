@@ -4,7 +4,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use reqwest::{header::HeaderMap, Method};
+use reqwest::{Method, header::HeaderMap};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -74,14 +74,14 @@ impl AuthorizationType {
 impl Display for AuthorizationType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            AuthorizationType::Basic(token) => write!(f, "Basic {}", token),
-            AuthorizationType::ApiKey(token) => write!(f, "{}", token),
+            AuthorizationType::Basic(token) => write!(f, "Basic {token}"),
+            AuthorizationType::ApiKey(token) => write!(f, "{token}"),
             AuthorizationType::Bearer(token)
             | AuthorizationType::OAuth2(token)
             | AuthorizationType::OIDC(token) => {
-                write!(f, "Bearer {}", token)
+                write!(f, "Bearer {token}")
             }
-            AuthorizationType::Keycloak(auth_type) => write!(f, "{}", auth_type),
+            AuthorizationType::Keycloak(auth_type) => write!(f, "{auth_type}"),
             _ => panic!("TokenType::None is not allowed"),
         }
     }
@@ -227,7 +227,7 @@ where
     pub fn rate_limit(self, rate_limit: u32) -> Self {
         match self.rate_limit.write() {
             Ok(mut rate) => rate.limit = rate_limit,
-            Err(e) => log::error!("Rate limiter error: {:?}", e),
+            Err(e) => log::error!("Rate limiter error: {e:?}"),
         }
         self
     }
@@ -236,7 +236,7 @@ where
     pub fn rate_period(self, rate_period: TimePeriod) -> Self {
         match self.rate_limit.write() {
             Ok(mut rate) => rate.period = rate_period,
-            Err(e) => log::error!("Rate limiter error: {:?}", e),
+            Err(e) => log::error!("Rate limiter error: {e:?}"),
         }
         self
     }

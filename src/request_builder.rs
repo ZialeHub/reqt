@@ -1,4 +1,4 @@
-use reqwest::{header::HeaderMap, Method};
+use reqwest::{Method, header::HeaderMap};
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, RwLock};
 
@@ -38,14 +38,8 @@ pub struct RequestBuilder<
     pub(crate) _phantom: std::marker::PhantomData<X>,
 }
 
-impl<
-        X: Deserialize<'static>,
-        B: Serialize + Clone,
-        P: Pagination,
-        F: Filter,
-        S: Sort,
-        R: Range,
-    > RequestBuilder<X, B, P, F, S, R>
+impl<X: Deserialize<'static>, B: Serialize + Clone, P: Pagination, F: Filter, S: Sort, R: Range>
+    RequestBuilder<X, B, P, F, S, R>
 where
     Query: for<'a> From<&'a F> + for<'a> From<&'a S> + for<'a> From<&'a R>,
 {

@@ -242,10 +242,10 @@ mod request_tests {
 
             if let Some(old_sort) = self.sorts.iter_mut().find(|s| {
                 s == &&sort
-                    || s == &&format!("-{}", sort)
-                    || s == &&format!("+{}", sort)
-                    || sort == format!("+{}", s)
-                    || sort == format!("-{}", s)
+                    || s == &&format!("-{sort}")
+                    || s == &&format!("+{sort}")
+                    || sort == format!("+{s}")
+                    || sort == format!("-{s}")
             }) {
                 *old_sort = sort;
                 return self;
@@ -473,10 +473,12 @@ mod request_tests {
         assert_eq!(first_response.len(), PAGINATION_SIZE * 2);
         let second_response = request.send::<Vec<User>>().await?;
         assert_eq!(second_response.len(), PAGINATION_SIZE * 2);
-        assert!(first_response
-            .iter()
-            .zip(second_response.iter())
-            .all(|(a, b)| a.name != b.name));
+        assert!(
+            first_response
+                .iter()
+                .zip(second_response.iter())
+                .all(|(a, b)| a.name != b.name)
+        );
         Ok(())
     }
 
@@ -493,10 +495,12 @@ mod request_tests {
         request.reset_pagination();
         let second_response = request.send::<Vec<User>>().await?;
         assert_eq!(second_response.len(), PAGINATION_SIZE * 2);
-        assert!(first_response
-            .iter()
-            .zip(second_response.iter())
-            .all(|(a, b)| a.name == b.name));
+        assert!(
+            first_response
+                .iter()
+                .zip(second_response.iter())
+                .all(|(a, b)| a.name == b.name)
+        );
         Ok(())
     }
 
@@ -514,11 +518,13 @@ mod request_tests {
             .sort("name");
         let request = api.get("/users")?;
         let response: Vec<User> = request.await?;
-        assert!(response
-            .first()
-            .unwrap()
-            .name
-            .lt(&response.last().unwrap().name));
+        assert!(
+            response
+                .first()
+                .unwrap()
+                .name
+                .lt(&response.last().unwrap().name)
+        );
         Ok(())
     }
 
@@ -536,11 +542,13 @@ mod request_tests {
             .sort("-name");
         let request = api.get("/users")?;
         let response: Vec<User> = request.await?;
-        assert!(response
-            .first()
-            .unwrap()
-            .name
-            .gt(&response.last().unwrap().name));
+        assert!(
+            response
+                .first()
+                .unwrap()
+                .name
+                .gt(&response.last().unwrap().name)
+        );
         Ok(())
     }
 
@@ -585,11 +593,13 @@ mod request_tests {
             .filter("primary_campus_id", vec!["31"]);
         let request = api.get("/users")?.pattern_sort("property").sort("name");
         let response: Vec<User> = request.await?;
-        assert!(response
-            .first()
-            .unwrap()
-            .name
-            .lt(&response.last().unwrap().name));
+        assert!(
+            response
+                .first()
+                .unwrap()
+                .name
+                .lt(&response.last().unwrap().name)
+        );
         Ok(())
     }
 
@@ -605,11 +615,13 @@ mod request_tests {
             .filter("primary_campus_id", vec!["31"]);
         let request = api.get("/users")?.pattern_sort("property").sort("-name");
         let response: Vec<User> = request.await?;
-        assert!(response
-            .first()
-            .unwrap()
-            .name
-            .gt(&response.last().unwrap().name));
+        assert!(
+            response
+                .first()
+                .unwrap()
+                .name
+                .gt(&response.last().unwrap().name)
+        );
         Ok(())
     }
 
@@ -627,11 +639,13 @@ mod request_tests {
             .sort("-name");
         let request = api.get("/users")?.pattern_sort("property").sort("name");
         let response: Vec<User> = request.await?;
-        assert!(response
-            .first()
-            .unwrap()
-            .name
-            .lt(&response.last().unwrap().name));
+        assert!(
+            response
+                .first()
+                .unwrap()
+                .name
+                .lt(&response.last().unwrap().name)
+        );
         Ok(())
     }
 
@@ -649,11 +663,13 @@ mod request_tests {
             .sort("name");
         let request = api.get("/users")?.pattern_sort("property").sort("-name");
         let response: Vec<User> = request.await?;
-        assert!(response
-            .first()
-            .unwrap()
-            .name
-            .gt(&response.last().unwrap().name));
+        assert!(
+            response
+                .first()
+                .unwrap()
+                .name
+                .gt(&response.last().unwrap().name)
+        );
         Ok(())
     }
 

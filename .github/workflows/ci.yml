@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types:
+      - synchronize
+      - reopened
+    paths:
+        - '**/*.rs'
+  push:
+    paths:
+      - '**/*.rs'
+    branches:
+      - main
+      - staging # only for binaries
+      - production # only for binaries
+
+jobs:
+  # # Either use the single job ci in one runner, or split it into multiple jobs.
+  # # The single job is faster until it is not enough anymore (bigger projects).
+  # # In any case, keep the build-release job
+  # full:
+  #  uses: ryse-rs/.workflows/.github/workflows/setup.yml@main
+
+  lints:
+    uses: ryse-rs/.workflows/.github/workflows/clippy.yml@main
+
+  health:
+    uses: ryse-rs/.workflows/.github/workflows/health.yml@main
+
+  build-debug:
+    uses: ryse-rs/.workflows/.github/workflows/build-debug.yml@main
+
+  tests:
+    needs: build-debug
+    uses: ryse-rs/.workflows/.github/workflows/test.yml@main
+    secrets: inherit
+
+  # always keep this job
+  build-release:
+    # needs: full
+    uses: ryse-rs/.workflows/.github/workflows/build-release.yml@main

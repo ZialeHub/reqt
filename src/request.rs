@@ -1,5 +1,5 @@
-use reqwest::{header::HeaderMap, Client, Method, StatusCode, Url};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use reqwest::{Client, Method, StatusCode, Url, header::HeaderMap};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_json::Value;
 use std::{
     future::{Future, IntoFuture},
@@ -55,13 +55,13 @@ pub struct Request<
 }
 
 impl<
-        X: for<'de> Deserialize<'de> + Serialize + Send + 'static,
-        B: Serialize + DeserializeOwned + Clone + Sync + Send + 'static + Unpin,
-        P: Pagination + Sync + Send + 'static + Unpin,
-        F: Filter + Sync + Send + 'static + Unpin,
-        S: Sort + Sync + Send + 'static + Unpin,
-        R: Range + Sync + Send + 'static + Unpin,
-    > IntoFuture for Request<X, B, P, F, S, R>
+    X: for<'de> Deserialize<'de> + Serialize + Send + 'static,
+    B: Serialize + DeserializeOwned + Clone + Sync + Send + 'static + Unpin,
+    P: Pagination + Sync + Send + 'static + Unpin,
+    F: Filter + Sync + Send + 'static + Unpin,
+    S: Sort + Sync + Send + 'static + Unpin,
+    R: Range + Sync + Send + 'static + Unpin,
+> IntoFuture for Request<X, B, P, F, S, R>
 where
     Query: for<'a> From<&'a F> + for<'a> From<&'a S> + for<'a> From<&'a R>,
 {
@@ -73,14 +73,8 @@ where
     }
 }
 
-impl<
-        X: Deserialize<'static>,
-        B: Serialize + Clone,
-        P: Pagination,
-        F: Filter,
-        S: Sort,
-        R: Range,
-    > Request<X, B, P, F, S, R>
+impl<X: Deserialize<'static>, B: Serialize + Clone, P: Pagination, F: Filter, S: Sort, R: Range>
+    Request<X, B, P, F, S, R>
 where
     Query: for<'a> From<&'a F> + for<'a> From<&'a S> + for<'a> From<&'a R>,
 {
@@ -125,14 +119,14 @@ where
     {
         match self.rate_limiter.write() {
             Ok(mut rate) => rate.request(),
-            Err(e) => log::error!("Rate limiter error: {:?}", e),
+            Err(e) => log::error!("Rate limiter error: {e:?}"),
         }
         let request = self.build_reqwest::<B>(self.body.clone())?;
-        log::info!("{:?}", request);
+        log::info!("{request:?}");
         let first_response = Self::execute_reqwest(&request, self.force_limit).await?;
         match self.rate_limiter.write() {
             Ok(mut rate) => rate.update(first_response.headers()),
-            Err(e) => log::error!("Rate limiter error: {:?}", e),
+            Err(e) => log::error!("Rate limiter error: {e:?}"),
         }
         let number_of_elements = Self::get_number_of_elements(first_response.headers());
         match number_of_elements {
@@ -277,12 +271,12 @@ where
                     .as_url(&self.pagination, &self.filter, &self.sort, &self.range)?;
 
             let next_request = Self::build_next_reqwest(&request, next_url)?;
-            log::info!("{:?}", next_request);
+            log::info!("{next_request:?}");
 
             let next_page_response = Self::execute_reqwest(&next_request, self.force_limit).await?;
             match self.rate_limiter.write() {
                 Ok(mut rate) => rate.update(next_page_response.headers()),
-                Err(e) => log::error!("Rate limiter error: {:?}", e),
+                Err(e) => log::error!("Rate limiter error: {e:?}"),
             }
 
             match &mut json_values {
