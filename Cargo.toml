@@ -39,5 +39,5 @@ range-derive = { path = "./range-derive" }
 
 [dev-dependencies]
 serial_test = "3.2.0"
-httpmock = "0.7.0"
+httpmock = "0.8.0"
 fake = { version = "3.1.0", features = ["derive"] }
