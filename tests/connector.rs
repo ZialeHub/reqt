@@ -8,10 +8,17 @@ mod connector_tests {
 
     fn get_credentials_oauth2() -> TestApiOauth2Connector {
         TestApiOauth2Connector {
-            client_id: std::env!("REQT_OAUTH2_CLIENT_ID").to_string(),
-            client_secret: std::env!("REQT_OAUTH2_CLIENT_SECRET").to_string(),
-            auth_endpoint: std::env!("REQT_OAUTH2_AUTH_ENDPOINT").to_string(),
-            scopes: std::env!("REQT_OAUTH2_SCOPES")
+            client_id: std::option_env!("REQT_OAUTH2_CLIENT_ID")
+                .expect("Env variable `REQT_OAUTH2_CLIENT_ID` not found")
+                .to_string(),
+            client_secret: std::option_env!("REQT_OAUTH2_CLIENT_SECRET")
+                .expect("Env variable `REQT_OAUTH2_CLIENT_SECRET` not found")
+                .to_string(),
+            auth_endpoint: std::option_env!("REQT_OAUTH2_AUTH_ENDPOINT")
+                .expect("Env variable `REQT_OAUTH2_AUTH_ENDPOINT` not found")
+                .to_string(),
+            scopes: std::option_env!("REQT_OAUTH2_SCOPES")
+                .expect("Env variable `REQT_OAUTH2_SCOPES` not found")
                 .split(',')
                 .map(|s| s.to_string())
                 .collect(),
@@ -21,16 +28,29 @@ mod connector_tests {
     fn get_credentials_keycloak() -> TestApiKeycloakConnector {
         let user_pass = String::from_utf8(
             general_purpose::STANDARD
-                .decode(std::env!("REQT_KEYCLOAK_USER_PASS").to_string())
+                .decode(
+                    std::option_env!("REQT_KEYCLOAK_USER_PASS")
+                        .expect("Env variable `REQT_KEYCLOAK_USER_PASS` not found"),
+                )
                 .unwrap(),
         )
         .unwrap();
         TestApiKeycloakConnector {
-            client_id: std::env!("REQT_KEYCLOAK_CLIENT_ID").to_string(),
-            client_secret: std::env!("REQT_KEYCLOAK_CLIENT_SECRET").to_string(),
-            auth_endpoint: std::env!("REQT_KEYCLOAK_AUTH_ENDPOINT").to_string(),
-            realm: std::env!("REQT_KEYCLOAK_REALM").to_string(),
-            user_login: std::env!("REQT_KEYCLOAK_USER_LOGIN").to_string(),
+            client_id: std::option_env!("REQT_KEYCLOAK_CLIENT_ID")
+                .expect("Env variable `REQT_KEYCLOAK_CLIENT_ID` not found")
+                .to_string(),
+            client_secret: std::option_env!("REQT_KEYCLOAK_CLIENT_SECRET")
+                .expect("Env variable `REQT_KEYCLOAK_CLIENT_SECRET` not found")
+                .to_string(),
+            auth_endpoint: std::option_env!("REQT_KEYCLOAK_AUTH_ENDPOINT")
+                .expect("Env variable `REQT_KEYCLOAK_AUTH_ENDPOINT` not found")
+                .to_string(),
+            realm: std::option_env!("REQT_KEYCLOAK_REALM")
+                .expect("Env variable `REQT_KEYCLOAK_REALM` not found")
+                .to_string(),
+            user_login: std::option_env!("REQT_KEYCLOAK_USER_LOGIN")
+                .expect("Env variable `REQT_KEYCLOAK_USER_LOGIN` not found")
+                .to_string(),
             user_pass,
         }
     }

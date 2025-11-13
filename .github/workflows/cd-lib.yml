@@ -13,6 +13,6 @@ jobs:
   publish:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     uses: ryse-rs/.workflows/.github/workflows/cd-lib.yml@main
-    secrets: inherit # ${{ secrets.PUBLISH_REGISTRY_TOKEN }}
+    secrets: inherit
     permissions:
       contents: write
