@@ -10,10 +10,3 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-
-registries:
-  ryse-rs-kellnr:
-    type: cargo-registry
-    registry: kellnr
-    url: https://kellnr.ryse.ovh/api/v1/cargo
-    token: ${{ secrets.PUBLISH_REGISTRY_TOKEN }}

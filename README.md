@@ -1,5 +1,4 @@
-[![Rust CI](https://github.com/ryse-rs/reqt/actions/workflows/ci.yaml/badge.svg)](https://github.com/ryse-rs/reqt/actions/workflows/ci.yaml)
-[![codecov](https://codecov.io/gh/ryse-rs/reqt/graph/badge.svg?token=RRR841D0NT)](https://codecov.io/gh/ryse-rs/reqt)
+[![Rust CI](https://github.com/ZialeHub/reqt/actions/workflows/ci.yaml/badge.svg)](https://github.com/ZialeHub/reqt/actions/workflows/ci.yaml)
 
 ### 📦 Library: `reqt`
 
@@ -20,10 +19,6 @@
 Web devs who need to interact with an API.
 
 ### ✨ Features
-
-Stay up to date with our backlog on our [project board](https://github.com/orgs/ryse-rs/projects/2).
-
-But here’s a quick look:
 
 - [x] connection
 - [x] authorization
@@ -143,17 +138,12 @@ struct TestApiConnector {
 
 ### 🤝 Contributing
 
-Please read our [CONTRIBUTING](https://github.com/ryse-rs/.github/blob/CONTRIBUTING.md) and [GOVERNANCE](https://github.com/ryse-rs/.github/blob/GOVERNANCE.md) documents for details on our workflow and policies.
-
 Please always perform the following checks before committing:  
 1. ⚙️ `cargo build --workspace --all --all-features --tests`
 2. 🧼 `cargo fmt --all`
 3. 🩺 `cargo clippy --workspace --all --all-features --tests -- -D warnings`
 4. 🧪 `cargo test --all-targets --all-features --workspace`
 
-### 📄 License - Proprietary
+### 📄 License
 
-Copyright © 2025 Ryse.  
-All rights reserved.
-
-See __NOTICE__.
+This project is licensed under the MIT License. See LICENSE for details.

@@ -168,7 +168,7 @@ fn impl_oauth2_derive(ast: &syn::DeriveInput) -> TokenStream {
                 let scopes = self
                     .scopes
                     .iter()
-                    .fold(String::new(), |acc, scope| format!("{acc} {scope}" scope));
+                    .fold(String::new(), |acc, scope| format!("{acc} {scope}"));
                 let mut params = HashMap::new();
                 params.insert("grant_type", "client_credentials");
                 params.insert("client_id", &self.client_id);

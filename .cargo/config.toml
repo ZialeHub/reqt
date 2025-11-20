@@ -1,12 +1,2 @@
 [env]
-
-[net]
-# This allows the use of private dependencies
-# For this to work, user (same for gh runner) must have a GitHub ssh key set up
-# Note: this is also set in .workflows env variables so it is not necessary here
-git-fetch-with-cli = true
-
-# This allows the use (pull) of our private crate registry
-[registries.kellnr]
-index = "sparse+https://kellnr.ryse.ovh/api/v1/crates/"
-credential-provider = ["cargo:token"]
+RUST_BACKTRACE = "0"
