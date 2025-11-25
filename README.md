@@ -147,3 +147,7 @@ Please always perform the following checks before committing:
 ### 📄 License
 
 This project is licensed under the MIT License. See LICENSE for details.
+
+## Contributors
+
+Huge thanks to [gpoblon](https://github.com/gpoblon) for his CI, ideas and reviews!
