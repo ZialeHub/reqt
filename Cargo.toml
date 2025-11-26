@@ -29,11 +29,11 @@ url = "2.5.7"
 base64 = "0.22.1"
 chrono = "0.4.42"
 log = "0.4.28"
-authorization-derive = { path = "./authorization-derive" }
-pagination-derive = { path = "./pagination-derive" }
-filter-derive = { path = "./filter-derive" }
-sort-derive = { path = "./sort-derive" }
-range-derive = { path = "./range-derive" }
+authorization-derive = { version = "0.1.0" }
+pagination-derive = { version = "0.1.0" }
+filter-derive = { version = "0.1.0" }
+sort-derive = { version = "0.1.0" }
+range-derive = { version = "0.1.0" }
 
 [dev-dependencies]
 serial_test = "3.2.0"
